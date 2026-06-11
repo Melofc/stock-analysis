@@ -42,7 +42,6 @@
         .spin{display:inline-block;width:24px;height:24px;border:3px solid #21262d;border-top-color:#58a6ff;border-radius:50%;animation:s 0.8s linear infinite}
         @keyframes s{to{transform:rotate(360deg)}}
         .info{font-size:10px;color:#484f58;text-align:center;margin-top:3px}
-        .dcount{font-size:10px;color:#484f58}
     </style>
 </head>
 <body>
@@ -61,7 +60,8 @@ const C={};
 
 function pf(c){return c.startsWith('6')?'sh':'sz';}
 
-async function getP(code){
+// 实时价格 - 用新浪
+async function getPrice(code){
     let p=pf(code);
     try{
         let r=await fetch(`https://hq.sinajs.cn/list=${p}${code}`,{headers:{Referer:'https://finance.sina.com.cn/'}});
@@ -72,11 +72,30 @@ async function getP(code){
     return null;
 }
 
+// K线 - 改用东方财富
 async function getK(code){
     let n=Date.now();
     if(C[code]&&C[code].d&&(n-C[code].t)<600000)return C[code].d;
-    let p=pf(code);
+    
+    let mkt=code.startsWith('6')?1:0;
+    let secid=mkt+'.'+code;
+    
     try{
+        let u=`https://push2his.eastmoney.com/api/qt/stock/kline/get?secid=${secid}&klt=101&fqt=1&lmt=300&fields1=f1,f2,f3,f4,f5,f6&fields2=f51,f52,f53,f54,f55,f56,f57&ut=7eea3edcaed734be9fbf2444c1a1997e`;
+        let r=await fetch(u);
+        let j=await r.json();
+        if(j&&j.data&&j.data.klines&&j.data.klines.length>=5){
+            let rd=j.data.klines.map(k=>{
+                let p=k.split(',');
+                return{o:+p[1],c:+p[2],h:+p[3],l:+p[4],v:+p[5]};
+            });
+            C[code]={d:rd,t:n};return rd;
+        }
+    }catch(e){}
+    
+    // 备用新浪
+    try{
+        let p=pf(code);
         let u=`https://money.finance.sina.com.cn/quotes_service/api/json_v2.php/CN_MarketData.getKLineData?symbol=${p}${code}&scale=240&ma=no&datalen=300`;
         let r=await fetch(u,{headers:{Referer:'https://finance.sina.com.cn/'}});
         let d=await r.json();
@@ -85,34 +104,28 @@ async function getK(code){
             C[code]={d:rd,t:n};return rd;
         }
     }catch(e){}
+    
     return null;
 }
 
 function calc(d){
     if(!d||d.length<5)return null;
     let c=d.map(x=>x.c),h=d.map(x=>x.h),l=d.map(x=>x.l),v=d.map(x=>x.v),len=c.length;
-    
-    // 用实际长度，不强制要求20
-    let win5=Math.min(5,len),win10=Math.min(10,len),win20=Math.min(20,len);
+    let w5=Math.min(5,len),w10=Math.min(10,len),w20=Math.min(20,len);
     let sm=(a,n)=>{let s=a.slice(-Math.min(n,a.length));return s.reduce((x,y)=>x+y,0)/s.length;};
-    let ma5=sm(c,win5),ma10=sm(c,win10),ma20=sm(c,win20);
-    
+    let ma5=sm(c,w5),ma10=sm(c,w10),ma20=sm(c,w20);
     let em=(a,n)=>{if(a.length<2)return a[a.length-1];let k=2/(n+1),r=a[0];for(let i=1;i<a.length;i++)r=a[i]*k+r*(1-k);return r;};
     let ema12=em(c,Math.min(12,len)),ema26=em(c,Math.min(26,len)),macd=ema12-ema26;
-    
     let ln=Math.min(9,len),lMin=Math.min(...l.slice(-ln)),hMax=Math.max(...h.slice(-ln));
     let rsv=hMax!=lMin?(c[len-1]-lMin)/(hMax-lMin)*100:50;
     let k=50;for(let i=Math.max(0,len-27);i<len;i++){let mn=Math.min(...l.slice(Math.max(0,i-8),i+1));let mx=Math.max(...h.slice(Math.max(0,i-8),i+1));let rs=mx!=mn?(d[i].c-mn)/(mx-mn)*100:50;k=k*2/3+rs*1/3;}
     let kd=(k+50+50)/3;
-    
     let g=0,ls=0,rn=Math.min(14,len-1);
     for(let i=len-rn;i<len;i++){let df=d[i].c-d[i-1].c;if(df>0)g+=df;else ls-=df;}
     let r=ls>0?(g/rn)/(ls/rn):100,rsi=100-100/(1+r);
-    
     let bn=Math.min(20,len),bs=c.slice(-bn),bbm=bs.reduce((x,y)=>x+y,0)/bn;
     let std=Math.sqrt(bs.reduce((x,y)=>x+(y-bbm)**2,0)/bn);
     let vm=v.slice(-Math.min(5,len)).reduce((x,y)=>x+y,0)/Math.min(5,len),vr=vm>0?v[len-1]/vm:1;
-    
     return{ma5,ma10,ma20,macd,k,kd,rsi,bbu:bbm+2*std,bbl:bbm-2*std,vr,cc:c[len-1],pc:c[len-2],cnt:len};
 }
 
@@ -134,11 +147,11 @@ function sc(pd,ind){
 }
 
 function card(code,name,pd,an){
-    if(!pd)return `<div class="card"><div class="name">${name}</div><div class="code">${code}</div><div style="color:#f85149;font-size:12px;text-align:center;">⚠️ 获取失败</div></div>`;
+    if(!pd)return `<div class="card"><div class="name">${name}</div><div class="code">${code}</div><div style="color:#f85149;font-size:12px;">⚠️ 获取失败</div></div>`;
     let cl=pd.ch>=0?'up':'down',sg=pd.ch>=0?'+':'';
     let bg='watch';if(an.sg.includes('买入')||an.sg.includes('偏多'))bg='buy';else if(an.sg.includes('卖出')||an.sg.includes('偏空'))bg='sell';
     let scl=an.sc>0?'#51cf66':(an.sc<0?'#ff6b6b':'#8b949e');
-    return`<div class="card"><div><span class="name">${name}</span> <span class="code">${code}</span><span class="dcount"> [${an.cn}条]</span></div>
+    return`<div class="card"><div><span class="name">${name}</span> <span class="code">${code}</span> <span style="font-size:10px;color:#484f58">[${an.cn}条]</span></div>
     <div class="price-row"><span class="price ${cl}">${pd.pr.toFixed(2)}</span><span class="change ${cl}">${sg}${pd.ch.toFixed(2)}%</span></div>
     <div class="sig-row ${bg}"><span class="sig-name">${an.sg}</span><span class="sig-score" style="color:${scl}">${an.sc>=0?'+':''}${an.sc}</span></div>
     <div style="font-size:11px;color:#8b949e;">趋势: ${an.tr}</div>
@@ -153,25 +166,24 @@ function card(code,name,pd,an){
 
 async function main(){
     document.getElementById('app').innerHTML='<div class="loading"><div class="spin"></div><div style="margin-top:10px;">刷新中...</div></div>';
-    let h='',b=0,s=0,w=0,ok=0;
+    let h='',b=0,s=0,w=0;
     for(let[code,name]of Object.entries(STOCKS)){
         try{
-            let pd=await getP(code);
-            if(!pd){h+=`<div class="card"><div class="name">${name}</div><div class="code">${code}</div><div style="color:#f85149;font-size:12px;text-align:center;">⚠️ 实时数据获取失败</div></div>`;continue;}
+            let pd=await getPrice(code);
+            if(!pd){h+=`<div class="card"><div class="name">${name}</div><div class="code">${code}</div><div style="color:#f85149;font-size:12px;">⚠️ 实时数据失败</div></div>`;continue;}
             let kd=await getK(code);
             let ind=calc(kd);
             let an=ind?sc(pd,ind):{sg:'⚠️K线不足',sc:0,dt:[],tr:'',m5:'-',m20:'-',mc:'-',kk:'-',kd:'-',rs:'-',cn:kd?kd.length:0};
-            if(ind)ok++;
             if(an.sg.includes('买入')||an.sg.includes('偏多'))b++;else if(an.sg.includes('卖出')||an.sg.includes('偏空'))s++;else w++;
             h+=card(code,name,pd,an);
-            await new Promise(r=>setTimeout(r,200));
-        }catch(e){h+=`<div class="card"><div style="color:#f85149;font-size:12px;">${name} 加载异常</div></div>`;}
+            await new Promise(r=>setTimeout(r,300));
+        }catch(e){h+=`<div class="card"><div style="color:#f85149;">${name} 异常</div></div>`;}
     }
     document.getElementById('app').innerHTML=h;
     document.getElementById('bc').textContent=b;
     document.getElementById('wc').textContent=w;
     document.getElementById('sc').textContent=s;
-    document.getElementById('status').textContent=`✅ ${new Date().toLocaleTimeString('zh-CN')} | 数据源:新浪 | K线:${ok}/${Object.keys(STOCKS).length}`;
+    document.getElementById('status').textContent=`✅ ${new Date().toLocaleTimeString('zh-CN')} | 东方财富+新浪`;
 }
 
 main();
