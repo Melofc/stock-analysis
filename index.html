@@ -7,142 +7,453 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black">
     <title>股票分析</title>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: #0d1117; color: #c9d1d9; padding: 10px; padding-bottom: 90px; }
-        .header { text-align: center; padding: 15px; background: #161b22; border-radius: 12px; margin-bottom: 12px; }
-        .header h1 { font-size: 20px; color: #58a6ff; }
-        .card { background: #161b22; border-radius: 10px; padding: 14px; margin-bottom: 10px; border: 1px solid #21262d; }
-        .top { display: flex; justify-content: space-between; align-items: flex-start; }
-        .name { font-size: 16px; font-weight: bold; color: #f0f6fc; }
-        .code { font-size: 11px; color: #8b949e; display: block; }
-        .price { font-size: 24px; font-weight: bold; }
-        .up { color: #ff6b6b; } .down { color: #51cf66; }
-        .signal-box { padding: 8px 12px; border-radius: 6px; margin-top: 8px; display: flex; justify-content: space-between; align-items: center; }
-        .buy-bg { background: rgba(81,207,102,0.1); border: 1px solid rgba(81,207,102,0.3); }
-        .sell-bg { background: rgba(255,107,107,0.1); border: 1px solid rgba(255,107,107,0.3); }
-        .watch-bg { background: rgba(139,148,158,0.1); border: 1px solid rgba(139,148,158,0.2); }
-        .sig-text { font-size: 14px; font-weight: bold; }
-        .score { font-size: 20px; font-weight: bold; }
-        .indicators { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; margin-top: 8px; }
-        .ind { background: #0d1117; padding: 6px; border-radius: 5px; text-align: center; }
-        .ind-label { font-size: 10px; color: #8b949e; }
-        .ind-val { font-size: 12px; color: #f0f6fc; font-weight: bold; }
-        .details { margin-top: 8px; display: flex; flex-wrap: wrap; gap: 4px; }
-        .tag { padding: 2px 8px; border-radius: 10px; font-size: 10px; }
-        .tag-bull { background: rgba(81,207,102,0.15); color: #3fb950; }
-        .tag-bear { background: rgba(255,107,107,0.15); color: #f85149; }
-        .bottom { position: fixed; bottom: 8px; left: 10px; right: 10px; background: #161b22; border-radius: 10px; padding: 10px; display: flex; justify-content: space-around; text-align: center; border: 1px solid #21262d; }
-        .b-label { font-size: 11px; color: #8b949e; }
-        .b-count { font-size: 18px; font-weight: bold; }
-        .refresh { position: fixed; bottom: 70px; right: 15px; width: 42px; height: 42px; border-radius: 50%; background: #238636; border: none; color: #fff; font-size: 20px; cursor: pointer; }
-        .loading { text-align: center; padding: 30px; color: #8b949e; }
-        .spinner { display: inline-block; width: 24px; height: 24px; border: 3px solid #21262d; border-top-color: #58a6ff; border-radius: 50%; animation: spin 0.8s linear infinite; }
-        @keyframes spin { to { transform: rotate(360deg); } }
+        *{margin:0;padding:0;box-sizing:border-box}
+        body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#0d1117;color:#c9d1d9;padding:10px;padding-bottom:100px}
+        .header{text-align:center;padding:15px;background:#161b22;border-radius:12px;margin-bottom:12px}
+        .header h1{font-size:20px;color:#58a6ff}
+        .card{background:#161b22;border-radius:10px;padding:14px;margin-bottom:10px;border:1px solid #21262d}
+        .top{display:flex;justify-content:space-between;align-items:flex-start}
+        .name{font-size:16px;font-weight:bold;color:#f0f6fc}
+        .code{font-size:11px;color:#8b949e;display:block}
+        .price{font-size:24px;font-weight:bold}
+        .up{color:#ff6b6b}.down{color:#51cf66}
+        .signal-box{padding:10px;border-radius:8px;margin-top:8px;display:flex;justify-content:space-between;align-items:center}
+        .buy-bg{background:rgba(81,207,102,0.1);border:1px solid rgba(81,207,102,0.3)}
+        .sell-bg{background:rgba(255,107,107,0.1);border:1px solid rgba(255,107,107,0.3)}
+        .watch-bg{background:rgba(139,148,158,0.1);border:1px solid rgba(139,148,158,0.2)}
+        .sig-text{font-size:15px;font-weight:bold}
+        .score{font-size:22px;font-weight:bold}
+        .row{display:flex;gap:5px;margin-top:8px;flex-wrap:wrap}
+        .ind-item{background:#0d1117;padding:6px 10px;border-radius:6px;text-align:center;flex:1;min-width:55px}
+        .ind-label{font-size:10px;color:#8b949e;display:block}
+        .ind-val{font-size:13px;color:#f0f6fc;font-weight:bold;display:block;margin-top:2px}
+        .tag{padding:3px 8px;border-radius:10px;font-size:10px;display:inline-block;margin:2px}
+        .tag-bull{background:rgba(81,207,102,0.15);color:#3fb950}
+        .tag-bear{background:rgba(255,107,107,0.15);color:#f85149}
+        .bottom{position:fixed;bottom:8px;left:10px;right:10px;background:#161b22;border-radius:10px;padding:10px;display:flex;justify-content:space-around;text-align:center;border:1px solid #21262d;z-index:99}
+        .b-label{font-size:11px;color:#8b949e}
+        .b-count{font-size:20px;font-weight:bold}
+        .refresh{position:fixed;bottom:75px;right:15px;width:44px;height:44px;border-radius:50%;background:#238636;border:none;color:#fff;font-size:22px;cursor:pointer;z-index:100;box-shadow:0 4px 12px rgba(35,134,54,0.4)}
+        .refresh:active{transform:scale(0.9)}
+        .loading{text-align:center;padding:30px;color:#8b949e}
+        .spinner{display:inline-block;width:24px;height:24px;border:3px solid #21262d;border-top-color:#58a6ff;border-radius:50%;animation:spin 0.8s linear infinite}
+        @keyframes spin{to{transform:rotate(360deg)}}
+        .error{color:#f85149;font-size:12px;text-align:center;padding:5px}
+        .info-bar{font-size:11px;color:#8b949e;text-align:center;margin-bottom:8px}
     </style>
 </head>
 <body>
-    <div class="header"><h1>📈 股票技术分析</h1><div style="font-size:11px;color:#8b949e;margin-top:4px;" id="timeShow"></div></div>
+    <div class="header">
+        <h1>📈 股票技术分析</h1>
+        <div class="info-bar" id="statusBar">正在加载...</div>
+    </div>
     <div id="container"><div class="loading"><div class="spinner"></div><div style="margin-top:10px;">加载中...</div></div></div>
-    <button class="refresh" onclick="load()">🔄</button>
+    <button class="refresh" onclick="loadAll()">🔄</button>
     <div class="bottom">
         <div><div class="b-label">🟢 做多</div><div class="b-count" style="color:#51cf66" id="buyNum">-</div></div>
         <div><div class="b-label">🔍 观望</div><div class="b-count" style="color:#8b949e" id="watchNum">-</div></div>
         <div><div class="b-label">🔴 卖出</div><div class="b-count" style="color:#ff6b6b" id="sellNum">-</div></div>
     </div>
+
 <script>
-const S = {"601868":"黄河旋风","000725":"京东方A","000791":"甘肃能源","002176":"江特电机"};
-const CACHE = {};
-function pf(code){return code.startsWith('6')?'sh':'sz';}
-async function getPrice(code){
-    let p=pf(code);
-    try{
-        let r=await fetch(`https://hq.sinajs.cn/list=${p}${code}`,{headers:{'Referer':'https://finance.sina.com.cn/'}});
-        let t=await r.text(); let m=t.match(/"([^"]*)"/);
-        if(m){let d=m[1].split(','); if(d.length>9&&d[3]){let pr=+d[3],pc=+d[2]; if(pr>0)return{price:pr,prevClose:pc,changePct:pc>0?(pr-pc)/pc*100:0};}}
-    }catch(e){}
-    try{
-        let r=await fetch(`https://qt.gtimg.cn/q=${p}${code}`);
-        let t=await r.text(); let m=t.match(/"([^"]*)"/);
-        if(m){let d=m[1].split('~'); if(d.length>35)return{price:+d[3],prevClose:+d[4],changePct:+d[32]};}
-    }catch(e){}
+// ============ 股票配置 ============
+const STOCKS = {
+    "601868": "黄河旋风",
+    "000725": "京东方A",
+    "000791": "甘肃能源",
+    "002176": "江特电机"
+};
+
+// ============ 缓存 ============
+const cache = {};
+const CACHE_TIME = 600000; // 10分钟
+
+// ============ 获取实时价格 ============
+async function getPrice(code) {
+    const prefix = code.startsWith('6') ? 'sh' : 'sz';
+    
+    // 尝试腾讯接口（手机上更稳定）
+    try {
+        const resp = await fetch(`https://qt.gtimg.cn/q=${prefix}${code}`, {
+            headers: { 'User-Agent': 'Mozilla/5.0' }
+        });
+        const text = await resp.text();
+        const match = text.match(/"([^"]*)"/);
+        if (match) {
+            const parts = match[1].split('~');
+            if (parts.length > 35 && parts[3]) {
+                const price = parseFloat(parts[3]);
+                if (price > 0) {
+                    return {
+                        price: price,
+                        prevClose: parseFloat(parts[4]) || price,
+                        open: parseFloat(parts[5]) || price,
+                        high: parseFloat(parts[33]) || price,
+                        low: parseFloat(parts[34]) || price,
+                        changePct: parseFloat(parts[32]) || 0,
+                        changeAmount: parseFloat(parts[31]) || 0
+                    };
+                }
+            }
+        }
+    } catch(e) {}
+    
+    // 备用新浪
+    try {
+        const resp = await fetch(`https://hq.sinajs.cn/list=${prefix}${code}`, {
+            headers: { 'Referer': 'https://finance.sina.com.cn/' }
+        });
+        const text = await resp.text();
+        const match = text.match(/"([^"]*)"/);
+        if (match) {
+            const parts = match[1].split(',');
+            if (parts.length > 9 && parts[3]) {
+                const price = parseFloat(parts[3]);
+                const prevClose = parseFloat(parts[2]) || price;
+                if (price > 0) {
+                    return {
+                        price: price,
+                        prevClose: prevClose,
+                        open: parseFloat(parts[1]) || price,
+                        high: parseFloat(parts[4]) || price,
+                        low: parseFloat(parts[5]) || price,
+                        changePct: prevClose > 0 ? (price - prevClose) / prevClose * 100 : 0,
+                        changeAmount: prevClose > 0 ? price - prevClose : 0
+                    };
+                }
+            }
+        }
+    } catch(e) {}
+    
     return null;
 }
-async function getKline(code){
-    let n=Date.now();
-    if(CACHE[code]&&(n-CACHE[code].t)<3600000)return CACHE[code].d;
-    let p=pf(code);
-    try{
-        let r=await fetch(`https://money.finance.sina.com.cn/quotes_service/api/json_v2.php/CN_MarketData.getKLineData?symbol=${p}${code}&scale=240&ma=no&datalen=300`);
-        let d=await r.json();
-        if(d&&d.length>20){let rd=d.map(x=>({date:x.day,open:+x.open,close:+x.close,high:+x.high,low:+x.low,volume:+x.volume}));CACHE[code]={d:rd,t:n};return rd;}
-    }catch(e){}
-    return null;
-}
-function calc(kd){
-    if(!kd||kd.length<20)return null;
-    let c=kd.map(x=>x.close),h=kd.map(x=>x.high),l=kd.map(x=>x.low),v=kd.map(x=>x.volume);
-    let len=c.length,last=kd[len-1],prev=kd[len-2];
-    function sm(a,n){let s=a.slice(-Math.min(n,a.length));return s.reduce((x,y)=>x+y,0)/s.length;}
-    function em(a,n){if(a.length<2)return a[a.length-1];let k=2/(n+1),r=a[0];for(let i=1;i<a.length;i++)r=a[i]*k+r*(1-k);return r;}
-    let ma5=sm(c,5),ma10=sm(c,10),ma20=sm(c,20);
-    let ema12=em(c,12),ema26=em(c,26),macd=ema12-ema26;
-    let kdjN=Math.min(9,len),lMin=Math.min(...l.slice(-kdjN)),hMax=Math.max(...h.slice(-kdjN));
-    let rsv=hMax!=lMin?(last.close-lMin)/(hMax-lMin)*100:50;
-    let k=50; for(let i=Math.max(0,len-27);i<len;i++){let lmn=Math.min(...l.slice(Math.max(0,i-8),i+1));let hmx=Math.max(...h.slice(Math.max(0,i-8),i+1));let rs=hmx!=lmn?(kd[i].close-lmn)/(hmx-lmn)*100:50;k=k*2/3+rs*1/3;}
-    let d=(k+50+50)/3,j=3*k-2*d;
-    let gains=0,losses=0,rsiN=Math.min(14,len-1);
-    for(let i=len-rsiN;i<len;i++){let diff=kd[i].close-kd[i-1].close;if(diff>0)gains+=diff;else losses-=diff;}
-    let rs=losses>0?(gains/rsiN)/(losses/rsiN):100,rsi=100-100/(1+rs);
-    let bn=Math.min(20,len),bs=c.slice(-bn),bbm=bs.reduce((x,y)=>x+y,0)/bn;
-    let std=Math.sqrt(bs.reduce((x,y)=>x+(y-bbm)**2,0)/bn);
-    let vm=v.slice(-5).reduce((x,y)=>x+y,0)/5,vr=vm>0?last.volume/vm:1;
-    return{ma5,ma10,ma20,macd,k,d,j,rsi,bbu:bbm+2*std,bbl:bbm-2*std,volRatio:vr,close:last.close,prevClose:prev.close};
-}
-function score(rt,ind){
-    if(!ind)return{sig:'⚠️数据不足',sc:0,det:[],tr:''};
-    let sc=0,det=[],p=rt.price,tr='';
-    if(p>ind.ma5)sc+=0.5;else sc-=0.5;
-    if(p>ind.ma20)sc+=0.5;else sc-=0.5;
-    if(ind.ma5>ind.ma10&&ind.ma10>ind.ma20){sc+=1;det.push('均线多头');tr='多头排列';}
-    else if(ind.ma5<ind.ma10&&ind.ma10<ind.ma20){sc-=1;det.push('均线空头');tr='空头排列';}
-    else if(ind.ma5>ind.ma20){sc+=0.5;tr='偏多';}else{sc-=0.5;tr='偏空';}
-    if(ind.macd>0)sc+=0.5;else sc-=0.5;
-    if(ind.k<20){sc+=1;det.push('KDJ超卖');}else if(ind.k>80){sc-=1;det.push('KDJ超买');}
-    if(ind.rsi<25){sc+=1.5;det.push('RSI超卖');}else if(ind.rsi>75){sc-=1.5;det.push('RSI超买');}
-    if(p<=ind.bbl){sc+=1.5;det.push('触及下轨');}else if(p>=ind.bbu){sc-=1.5;det.push('触及上轨');}
-    if(ind.volRatio>1.5&&p>ind.prevClose*1.02){sc+=1;det.push('放量上涨');}
-    let sig;
-    if(sc>=4)sig='✅✅强烈买入';else if(sc>=2)sig='✅买入';else if(sc>=0.5)sig='🟢偏多';
-    else if(sc>-0.5)sig='🔍观望';else if(sc>-2)sig='🟠偏空';else if(sc>-4)sig='❌卖出';else sig='❌❌强烈卖出';
-    return{sig,sc:+sc.toFixed(1),det:det.slice(0,4),tr,ma5:ind.ma5.toFixed(2),ma20:ind.ma20.toFixed(2),macd:ind.macd.toFixed(3),k:ind.k.toFixed(1),d:ind.d.toFixed(1),rsi:ind.rsi.toFixed(1)};
-}
-async function load(){
-    document.getElementById('container').innerHTML='<div class="loading"><div class="spinner"></div><div style="margin-top:10px;">刷新中...</div></div>';
-    let h='',b=0,se=0,w=0;
-    for(let[code,name]of Object.entries(S)){
-        try{
-            let rt=await getPrice(code);
-            if(!rt){h+=`<div class="card"><div class="name">${name}<span class="code">${code}</span></div><div style="color:#f85149;font-size:12px;">⚠️无数据</div></div>`;continue;}
-            let kd=await getKline(code),ind=calc(kd),an=ind?score(rt,ind):{sig:'⚠️数据不足',sc:0,det:[],tr:'',ma5:'-',ma20:'-',macd:'-',k:'-',d:'-',rsi:'-'};
-            if(an.sig.includes('买入')||an.sig.includes('偏多'))b++;else if(an.sig.includes('卖出')||an.sig.includes('偏空'))se++;else w++;
-            let cls=rt.changePct>=0?'up':'down',sg=rt.changePct>=0?'+':'';
-            let bc='watch-bg'; if(an.sig.includes('买入')||an.sig.includes('偏多'))bc='buy-bg'; else if(an.sig.includes('卖出')||an.sig.includes('偏空'))bc='sell-bg';
-            h+=`<div class="card"><div class="top"><div><div class="name">${name}</div><div class="code">${code}</div></div><div style="text-align:right;"><div class="price ${cls}">${rt.price.toFixed(2)}</div><div style="font-size:12px;color:${cls==='up'?'#ff6b6b':'#51cf66'}">${sg}${rt.changePct.toFixed(2)}%</div></div></div>
-            <div class="signal-box ${bc}"><span class="sig-text">${an.sig}</span><span class="score" style="color:${an.sc>0?'#51cf66':an.sc<0?'#ff6b6b':'#8b949e'}">${an.sc>=0?'+':''}${an.sc}</span></div>
-            <div style="font-size:11px;color:#8b949e;margin-bottom:6px;">${an.tr}</div>
-            <div class="indicators"><div class="ind"><div class="ind-label">MA5</div><div class="ind-val">${an.ma5}</div></div><div class="ind"><div class="ind-label">MA20</div><div class="ind-val">${an.ma20}</div></div><div class="ind"><div class="ind-label">MACD</div><div class="ind-val">${an.macd}</div></div><div class="ind"><div class="ind-label">K</div><div class="ind-val">${an.k}</div></div><div class="ind"><div class="ind-label">D</div><div class="ind-val">${an.d}</div></div><div class="ind"><div class="ind-label">RSI</div><div class="ind-val">${an.rsi}</div></div></div>
-            ${an.det.length?`<div class="details">${an.det.map(d=>{let c=d.includes('多')||d.includes('金')||d.includes('超卖')||d.includes('下轨')||d.includes('放量')?'tag-bull':'tag-bear';return`<span class="tag ${c}">${d}</span>`;}).join('')}</div>`:''}</div>`;
-            await new Promise(r=>setTimeout(r,200));
-        }catch(e){h+=`<div class="card" style="color:#f85149;">${name}错误</div>`;}
+
+// ============ 获取K线 ============
+async function getKline(code) {
+    const now = Date.now();
+    if (cache[code] && cache[code].kline && (now - cache[code].klineTime) < CACHE_TIME) {
+        return cache[code].kline;
     }
-    document.getElementById('container').innerHTML=h;
-    document.getElementById('buyNum').textContent=b;
-    document.getElementById('watchNum').textContent=w;
-    document.getElementById('sellNum').textContent=se;
-    document.getElementById('timeShow').textContent='更新: '+new Date().toLocaleTimeString('zh-CN');
+    
+    const prefix = code.startsWith('6') ? 'sh' : 'sz';
+    
+    // 新浪K线
+    try {
+        const url = `https://money.finance.sina.com.cn/quotes_service/api/json_v2.php/CN_MarketData.getKLineData?symbol=${prefix}${code}&scale=240&ma=no&datalen=300`;
+        const resp = await fetch(url, {
+            headers: { 'Referer': 'https://finance.sina.com.cn/' }
+        });
+        const data = await resp.json();
+        
+        if (data && Array.isArray(data) && data.length > 20) {
+            const result = data.map(item => ({
+                date: item.day,
+                open: parseFloat(item.open),
+                close: parseFloat(item.close),
+                high: parseFloat(item.high),
+                low: parseFloat(item.low),
+                volume: parseFloat(item.volume)
+            }));
+            
+            if (!cache[code]) cache[code] = {};
+            cache[code].kline = result;
+            cache[code].klineTime = now;
+            return result;
+        }
+    } catch(e) {}
+    
+    // 东方财富K线
+    try {
+        const marketCode = code.startsWith('6') ? 1 : 0;
+        const secid = `${marketCode}.${code}`;
+        const url = `https://push2his.eastmoney.com/api/qt/stock/kline/get?secid=${secid}&klt=101&fqt=1&lmt=300&fields1=f1,f2,f3,f4,f5,f6&fields2=f51,f52,f53,f54,f55,f56,f57&ut=7eea3edcaed734be9fbf2444c1a1997e`;
+        const resp = await fetch(url);
+        const data = await resp.json();
+        
+        if (data && data.data && data.data.klines && data.data.klines.length > 20) {
+            const result = data.data.klines.map(k => {
+                const parts = k.split(',');
+                return {
+                    date: parts[0],
+                    open: parseFloat(parts[1]),
+                    close: parseFloat(parts[2]),
+                    high: parseFloat(parts[3]),
+                    low: parseFloat(parts[4]),
+                    volume: parseFloat(parts[5])
+                };
+            });
+            
+            if (!cache[code]) cache[code] = {};
+            cache[code].kline = result;
+            cache[code].klineTime = now;
+            return result;
+        }
+    } catch(e) {}
+    
+    return null;
 }
-function t(){document.getElementById('timeShow').textContent=new Date().toLocaleTimeString('zh-CN');}
-t();setInterval(t,30000);load();setInterval(load,300000);
+
+// ============ 计算指标 ============
+function calcIndicators(klineData) {
+    if (!klineData || klineData.length < 20) return null;
+    
+    const closes = klineData.map(d => d.close);
+    const highs = klineData.map(d => d.high);
+    const lows = klineData.map(d => d.low);
+    const volumes = klineData.map(d => d.volume);
+    const len = closes.length;
+    
+    // SMA
+    function sma(arr, n) {
+        const s = arr.slice(-Math.min(n, arr.length));
+        return s.reduce((a, b) => a + b, 0) / s.length;
+    }
+    
+    // EMA
+    function ema(arr, n) {
+        if (arr.length < 2) return arr[arr.length - 1];
+        const k = 2 / (n + 1);
+        let r = arr[0];
+        for (let i = 1; i < arr.length; i++) r = arr[i] * k + r * (1 - k);
+        return r;
+    }
+    
+    const ma5 = sma(closes, 5);
+    const ma10 = sma(closes, 10);
+    const ma20 = sma(closes, 20);
+    const ma60 = sma(closes, Math.min(60, len));
+    
+    const ema12 = ema(closes, 12);
+    const ema26 = ema(closes, 26);
+    const macd = ema12 - ema26;
+    
+    // KDJ
+    const kdjN = Math.min(9, len);
+    const lMin = Math.min(...lows.slice(-kdjN));
+    const hMax = Math.max(...highs.slice(-kdjN));
+    const rsv = hMax !== lMin ? (closes[len-1] - lMin) / (hMax - lMin) * 100 : 50;
+    
+    let k = 50;
+    for (let i = Math.max(0, len - 27); i < len; i++) {
+        const lmn = Math.min(...lows.slice(Math.max(0, i - 8), i + 1));
+        const hmx = Math.max(...highs.slice(Math.max(0, i - 8), i + 1));
+        const rs = hmx !== lmn ? (klineData[i].close - lmn) / (hmx - lmn) * 100 : 50;
+        k = k * 2/3 + rs * 1/3;
+    }
+    const d = (k + 50 + 50) / 3;
+    const j = 3 * k - 2 * d;
+    
+    // RSI
+    let gains = 0, losses = 0;
+    const rsiN = Math.min(14, len - 1);
+    for (let i = len - rsiN; i < len; i++) {
+        const diff = klineData[i].close - klineData[i-1].close;
+        if (diff > 0) gains += diff;
+        else losses -= diff;
+    }
+    const avgGain = gains / rsiN;
+    const avgLoss = losses / rsiN;
+    const rs = avgLoss > 0 ? avgGain / avgLoss : 100;
+    const rsi = 100 - 100 / (1 + rs);
+    
+    // BOLL
+    const bollN = Math.min(20, len);
+    const bollSlice = closes.slice(-bollN);
+    const bbm = bollSlice.reduce((a, b) => a + b, 0) / bollN;
+    const variance = bollSlice.reduce((s, v) => s + Math.pow(v - bbm, 2), 0) / bollN;
+    const std = Math.sqrt(variance);
+    
+    // 成交量
+    const volMa5 = volumes.slice(-5).reduce((a, b) => a + b, 0) / 5;
+    const volRatio = volMa5 > 0 ? volumes[len-1] / volMa5 : 1;
+    
+    return {
+        ma5, ma10, ma20, ma60,
+        macd,
+        k, d, j,
+        rsi,
+        bbu: bbm + 2 * std,
+        bbl: bbm - 2 * std,
+        bbm,
+        volRatio,
+        close: closes[len-1],
+        prevClose: closes[len-2],
+        dataCount: len
+    };
+}
+
+// ============ 评分 ============
+function getScore(priceData, ind) {
+    if (!ind) return { sig: '⚠️数据不足', sc: 0, det: [], tr: '', ma5:'-', ma20:'-', macd:'-', k:'-', d:'-', rsi:'-', count:0 };
+    
+    let sc = 0;
+    const det = [];
+    const p = priceData.price;
+    
+    // 均线
+    if (p > ind.ma5) sc += 0.5; else sc -= 0.5;
+    if (p > ind.ma20) sc += 0.5; else sc -= 0.5;
+    
+    let tr;
+    if (ind.ma5 > ind.ma10 && ind.ma10 > ind.ma20) {
+        sc += 1; det.push('均线多头'); tr = '📈多头排列';
+    } else if (ind.ma5 < ind.ma10 && ind.ma10 < ind.ma20) {
+        sc -= 1; det.push('均线空头'); tr = '📉空头排列';
+    } else if (ind.ma5 > ind.ma20) {
+        sc += 0.5; tr = '偏多';
+    } else {
+        sc -= 0.5; tr = '偏空';
+    }
+    
+    // MACD
+    if (ind.macd > 0) sc += 0.5; else sc -= 0.5;
+    
+    // KDJ
+    if (ind.k < 20) { sc += 1; det.push('KDJ超卖'); }
+    else if (ind.k > 80) { sc -= 1; det.push('KDJ超买'); }
+    
+    // RSI
+    if (ind.rsi < 25) { sc += 1.5; det.push('RSI超卖'); }
+    else if (ind.rsi > 75) { sc -= 1.5; det.push('RSI超买'); }
+    
+    // 布林
+    if (p <= ind.bbl) { sc += 1.5; det.push('触及下轨'); }
+    else if (p >= ind.bbu) { sc -= 1.5; det.push('触及上轨'); }
+    
+    // 成交量
+    if (ind.volRatio > 1.5 && p > ind.prevClose * 1.02) {
+        sc += 1; det.push('放量上涨');
+    } else if (ind.volRatio > 1.5 && p < ind.prevClose * 0.98) {
+        sc -= 1; det.push('放量下跌');
+    }
+    
+    let sig;
+    if (sc >= 4) sig = '✅✅强烈买入';
+    else if (sc >= 2) sig = '✅买入';
+    else if (sc >= 0.5) sig = '🟢偏多';
+    else if (sc > -0.5) sig = '🔍观望';
+    else if (sc > -2) sig = '🟠偏空';
+    else if (sc > -4) sig = '❌卖出';
+    else sig = '❌❌强烈卖出';
+    
+    return {
+        sig, sc: +sc.toFixed(1), det: det.slice(0, 4), tr,
+        ma5: ind.ma5.toFixed(2), ma20: ind.ma20.toFixed(2),
+        macd: ind.macd.toFixed(3), k: ind.k.toFixed(1),
+        d: ind.d.toFixed(1), rsi: ind.rsi.toFixed(1),
+        count: ind.dataCount
+    };
+}
+
+// ============ 渲染 ============
+function renderCard(code, name, priceData, analysis) {
+    if (!priceData) {
+        return `<div class="card"><div class="name">${name}<span class="code">${code}</span></div><div class="error">⚠️ 无法获取实时数据</div></div>`;
+    }
+    
+    const cls = priceData.changePct >= 0 ? 'up' : 'down';
+    const sign = priceData.changePct >= 0 ? '+' : '';
+    
+    let bg = 'watch-bg';
+    if (analysis.sig.includes('买入') || analysis.sig.includes('偏多')) bg = 'buy-bg';
+    else if (analysis.sig.includes('卖出') || analysis.sig.includes('偏空')) bg = 'sell-bg';
+    
+    const scoreColor = analysis.sc > 0 ? '#51cf66' : (analysis.sc < 0 ? '#ff6b6b' : '#8b949e');
+    const scoreSign = analysis.sc >= 0 ? '+' : '';
+    
+    return `<div class="card">
+        <div class="top">
+            <div>
+                <div class="name">${name}</div>
+                <div class="code">${code} | ${analysis.count}条数据</div>
+            </div>
+            <div style="text-align:right;">
+                <div class="price ${cls}">${priceData.price.toFixed(2)}</div>
+                <div style="font-size:12px;color:${cls==='up'?'#ff6b6b':'#51cf66'}">${sign}${priceData.changePct.toFixed(2)}%</div>
+            </div>
+        </div>
+        
+        <div class="signal-box ${bg}">
+            <span class="sig-text">${analysis.sig}</span>
+            <span class="score" style="color:${scoreColor}">${scoreSign}${analysis.sc}</span>
+        </div>
+        
+        <div style="font-size:11px;color:#8b949e;margin-bottom:6px;">趋势: ${analysis.tr}</div>
+        
+        <div class="row">
+            <div class="ind-item"><span class="ind-label">MA5</span><span class="ind-val">${analysis.ma5}</span></div>
+            <div class="ind-item"><span class="ind-label">MA20</span><span class="ind-val">${analysis.ma20}</span></div>
+            <div class="ind-item"><span class="ind-label">MACD</span><span class="ind-val">${analysis.macd}</span></div>
+            <div class="ind-item"><span class="ind-label">K</span><span class="ind-val">${analysis.k}</span></div>
+            <div class="ind-item"><span class="ind-label">D</span><span class="ind-val">${analysis.d}</span></div>
+            <div class="ind-item"><span class="ind-label">RSI</span><span class="ind-val">${analysis.rsi}</span></div>
+        </div>
+        
+        ${analysis.det.length ? `<div style="margin-top:8px;">${analysis.det.map(d => {
+            const c = d.includes('多') || d.includes('金') || d.includes('超卖') || d.includes('下轨') || d.includes('放量上涨') ? 'tag-bull' : 'tag-bear';
+            return `<span class="tag ${c}">${d}</span>`;
+        }).join('')}</div>` : ''}
+    </div>`;
+}
+
+// ============ 主函数 ============
+async function loadAll() {
+    const container = document.getElementById('container');
+    const statusBar = document.getElementById('statusBar');
+    
+    container.innerHTML = '<div class="loading"><div class="spinner"></div><div style="margin-top:10px;">正在刷新...</div></div>';
+    statusBar.textContent = '刷新中...';
+    
+    let html = '';
+    let buyC = 0, sellC = 0, watchC = 0;
+    let successCount = 0;
+    
+    for (const [code, name] of Object.entries(STOCKS)) {
+        try {
+            // 获取实时价格
+            const priceData = await getPrice(code);
+            
+            if (!priceData) {
+                html += `<div class="card"><div class="name">${name}<span class="code">${code}</span></div><div class="error">⚠️ 实时数据获取失败</div></div>`;
+                continue;
+            }
+            
+            // 获取K线
+            const klineData = await getKline(code);
+            const ind = calcIndicators(klineData);
+            
+            const analysis = ind ? getScore(priceData, ind) : {
+                sig: '⚠️数据不足', sc: 0, det: [], tr: '',
+                ma5: '-', ma20: '-', macd: '-', k: '-', d: '-', rsi: '-', count: klineData ? klineData.length : 0
+            };
+            
+            if (ind) successCount++;
+            
+            if (analysis.sig.includes('买入') || analysis.sig.includes('偏多')) buyC++;
+            else if (analysis.sig.includes('卖出') || analysis.sig.includes('偏空')) sellC++;
+            else watchC++;
+            
+            html += renderCard(code, name, priceData, analysis);
+            
+            // 避免请求过快
+            await new Promise(r => setTimeout(r, 300));
+        } catch(e) {
+            html += `<div class="card"><div class="error">${name}(${code}) 加载失败</div></div>`;
+        }
+    }
+    
+    container.innerHTML = html;
+    document.getElementById('buyNum').textContent = buyC;
+    document.getElementById('watchNum').textContent = watchC;
+    document.getElementById('sellNum').textContent = sellC;
+    
+    const now = new Date();
+    statusBar.textContent = `✅ 更新: ${now.toLocaleTimeString('zh-CN')} | ${successCount}/${Object.keys(STOCKS).length}只有K线数据`;
+}
+
+// ============ 启动 ============
+loadAll();
+setInterval(loadAll, 300000); // 5分钟刷新
 </script>
 </body>
 </html>
