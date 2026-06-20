@@ -37,6 +37,8 @@
         .info-row:last-child{border-bottom:none}
         .info-label{color:#8b949e;font-size:12px}
         .info-value{color:#f0f6fc;font-weight:bold;font-size:12px;text-align:right}
+        .info-value.up{color:#ff6b6b}
+        .info-value.down{color:#51cf66}
         
         .score-bar{background:#21262d;border-radius:8px;height:20px;margin:10px 0;overflow:hidden}
         .score-fill{height:100%;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:bold;color:#fff;transition:width 0.6s}
@@ -80,6 +82,11 @@
         <select id="presetSelect" onchange="document.getElementById('codeInput').value=this.value">
             <option value="600172">黄河旋风</option>
             <option value="000725">京东方A</option>
+            <option value="000791">甘肃能源</option>
+            <option value="002176">江特电机</option>
+            <option value="605358">立昂微</option>
+            <option value="600519">贵州茅台</option>
+            <option value="300750">宁德时代</option>
         </select>
     </div>
     <button class="btn" onclick="analyze()">🔍 开始分析</button>
@@ -110,7 +117,6 @@ function calcRSI(data, period) {
     var len = data.length;
     if (len < period + 1) return 50;
     var avgGain = 0, avgLoss = 0;
-    // 初始周期简单平均
     for (var i = 1; i <= period; i++) {
         var diff = data[i].c - data[i-1].c;
         if (diff > 0) avgGain += diff;
@@ -118,7 +124,6 @@ function calcRSI(data, period) {
     }
     avgGain /= period;
     avgLoss /= period;
-    // 递推平滑
     for (var i = period + 1; i < len; i++) {
         var diff = data[i].c - data[i-1].c;
         var gain = diff > 0 ? diff : 0;
@@ -146,7 +151,6 @@ function calcKDJ(data) {
         var maxH = Math.max.apply(null, highs);
         var rsv = maxH !== minL ? (data[i].c - minL) / (maxH - minL) * 100 : 50;
         
-        // 记录前一日值
         if (i === len - 2) {
             prevK = k;
             prevD = d;
@@ -164,7 +168,7 @@ function calcKDJ(data) {
     };
 }
 
-// ==================== 数据获取（GBK解码修复乱码） ====================
+// ==================== 数据获取 ====================
 async function getTencentData(code){
     var p = code.startsWith('6') ? 'sh' : 'sz';
     try{
@@ -196,7 +200,6 @@ async function getTencentData(code){
                     changeAmt: parseFloat(parts[31]) || 0,
                     turnover: parseFloat(parts[38]) || 0,
                     volRatio: parseFloat(parts[49]) || 1,
-                    // 接口返回单位：亿元，直接使用
                     totalMv: parseFloat(parts[45]) || 100,
                     flowMv: parseFloat(parts[44]) || 100,
                     pe: parseFloat(parts[39]) || 0,
@@ -235,7 +238,7 @@ async function getTencentKline(code, days){
     return null;
 }
 
-// ==================== 指标计算（全量修正版） ====================
+// ==================== 指标计算 ====================
 function calcAll(data, realtime){
     if(!data || data.length < 20) return null;
     var closes = data.map(function(d){ return d.c; });
@@ -261,7 +264,6 @@ function calcAll(data, realtime){
     var ma120 = sma(closes, Math.min(120, len));
     var ma250 = sma(closes, Math.min(250, len));
     
-    // 前一日均线，用于金叉死叉判断
     var prevMa5 = sma(closes.slice(0, -1), 5);
     var prevMa10 = sma(closes.slice(0, -1), 10);
     var prevMa20 = sma(closes.slice(0, -1), 20);
@@ -270,7 +272,7 @@ function calcAll(data, realtime){
     var ma10Gold = ma10 > ma20 && prevMa10 <= prevMa20;
     var ma10Dead = ma10 < ma20 && prevMa10 >= prevMa20;
 
-    // MACD（数组计算，支持连续红绿柱判断）
+    // MACD
     var ema12Arr = calcEmaArray(closes, 12);
     var ema26Arr = calcEmaArray(closes, 26);
     var difArr = closes.map(function(_, i){ return ema12Arr[i] - ema26Arr[i]; });
@@ -283,7 +285,6 @@ function calcAll(data, realtime){
     var macdGold = dif > deaVal && difArr[len-2] <= deaArr[len-2];
     var macdDead = dif < deaVal && difArr[len-2] >= deaArr[len-2];
     
-    // 红绿柱连续2日放大（3根柱递增）
     var macdRedGrow = false, macdGreenGrow = false;
     if (len >= 3) {
         var m0 = macdArr[len-1], m1 = macdArr[len-2], m2 = macdArr[len-3];
@@ -291,12 +292,12 @@ function calcAll(data, realtime){
         if (m0 < 0 && m1 < 0 && m2 < 0 && m0 < m1 && m1 < m2) macdGreenGrow = true;
     }
 
-    // KDJ（标准算法）
+    // KDJ
     var kdjResult = calcKDJ(data);
     var k = kdjResult.k, d = kdjResult.d, j = kdjResult.j;
     var kdjGold = kdjResult.kdjGold, kdjDead = kdjResult.kdjDead;
 
-    // RSI（Wilder算法）
+    // RSI
     var rsi6 = calcRSI(data, 6);
     var rsi14 = calcRSI(data, 14);
     var rsi24 = calcRSI(data, 24);
@@ -312,11 +313,11 @@ function calcAll(data, realtime){
     var bollPos = (last.c - bbl) / (bbu - bbl) * 100;
     var bollWidth = (bbu - bbl) / bbm * 100;
 
-    // 量比（修正：分母为过去5日均值，不含当日）
+    // 成交量相关（核心新增）
     var volMa5 = len >= 6 ? sma(volumes.slice(0, -1), 5) : volumes[0];
     var volMa20 = len >= 21 ? sma(volumes.slice(0, -1), 20) : volumes[0];
     var vr = volMa5 > 0 ? last.v / volMa5 : 1;
-    var volTrend = volMa5 > volMa20;
+    var volTrend = volMa5 > volMa20; // 中期量能趋势：5日均量 > 20日均量 = 放量趋势
 
     // 涨跌幅周期
     var pct5 = pctChg(5);
@@ -367,6 +368,7 @@ function calcAll(data, realtime){
         rsi6, rsi14, rsi24,
         bbu, bbl, bbm, bollPos, bollWidth,
         vr, volMa5, volMa20, volTrend,
+        todayVol: last.v,
         pct5, pct10, pct20, pct60,
         trendType, priceLevel, marketType,
         amplitude, upDays, downDays, riseDays, fallDays,
@@ -374,7 +376,7 @@ function calcAll(data, realtime){
     };
 }
 
-// ==================== 评分与信号（全量修正版） ====================
+// ==================== 评分与信号 ====================
 function getScore(ind, pctChg, turnover){
     if(!ind) return { scores: {}, total: 0, signal: '数据不足', advice: '', analyses: {} };
     var scores = {}, analyses = {};
@@ -382,13 +384,11 @@ function getScore(ind, pctChg, turnover){
 
     // ========== 1. 均线系统 ±2.5 ==========
     var ma = 0, maAnalysis = '';
-    // 基础位置分
     if (close > ind.ma5) { ma += 0.3; maAnalysis = '股价站上MA5短期均线，短线偏强。'; }
     else { ma -= 0.3; maAnalysis = '股价跌破MA5短期均线，短线偏弱。'; }
     if (close > ind.ma20) { ma += 0.4; maAnalysis += ' 站上MA20中期均线，中期趋势向好。'; }
     else { ma -= 0.4; maAnalysis += ' 跌破MA20中期均线，中期趋势偏弱。'; }
 
-    // 核心信号：排列/交叉 互斥取高
     var coreScores = [];
     if (ind.ma5 > ind.ma10 && ind.ma10 > ind.ma20) {
         coreScores.push({ score: 1.8, text: '均线多头排列(MA5>MA10>MA20)，上升通道良好。' });
@@ -422,34 +422,29 @@ function getScore(ind, pctChg, turnover){
     if (close > ind.ma60) maAnalysis += ' 股价运行在MA60生命线上方。';
     else maAnalysis += ' 股价运行在MA60生命线下方。';
 
-    // 趋势环境修正
     if (ind.trendType === '上升趋势') {
         if (ind.ma5 > ind.ma10 && ind.ma10 > ind.ma20) ma += 0.2;
-        if (ind.ma5Dead) ma = ma + 0.75; // 死叉扣分减半
+        if (ind.ma5Dead) ma = ma + 0.75;
     } else if (ind.trendType === '下降趋势') {
         if (ind.ma5 < ind.ma10 && ind.ma10 < ind.ma20) ma -= 0.2;
-        if (ind.ma5Gold) ma = ma - 0.75; // 金叉加分减半
+        if (ind.ma5Gold) ma = ma - 0.75;
     }
     scores['均线'] = Math.round(Math.max(-2.5, Math.min(2.5, ma)) * 10) / 10;
     analyses['均线'] = maAnalysis;
 
     // ========== 2. MACD ±2.0 ==========
     var mc = 0, mcAnalysis = '';
-    // 核心拐点
     if (ind.macdGold) { mc += 1.5; mcAnalysis = 'MACD金叉！DIF上穿DEA，买入信号。'; }
     else if (ind.macdDead) { mc -= 1.5; mcAnalysis = 'MACD死叉！DIF下穿DEA，卖出信号。'; }
     else if (ind.dif > ind.dea) { mc += 0.8; mcAnalysis = 'MACD处于多头区域(DIF>DEA)，趋势偏多。'; }
     else { mc -= 0.8; mcAnalysis = 'MACD处于空头区域(DIF<DEA)，趋势偏空。'; }
 
-    // 零轴位置
     if (ind.dif > 0) { mc += 0.3; mcAnalysis += ' DIF在零轴上方，中长期趋势向好。'; }
     else { mc -= 0.3; mcAnalysis += ' DIF在零轴下方，中长期趋势偏弱。'; }
 
-    // 红绿柱连续放大
     if (ind.macdRedGrow) { mc += 0.2; mcAnalysis += ' 红柱持续放大，上涨动能增强。'; }
     if (ind.macdGreenGrow) { mc -= 0.2; mcAnalysis += ' 绿柱持续放大，下跌动能增强。'; }
 
-    // 趋势修正
     if (ind.trendType === '上升趋势') {
         if (ind.dif > 0 && ind.macdGold) mc += 0.2;
         if (ind.dif < 0 && ind.macdDead) mc = mc + 0.75;
@@ -476,12 +471,11 @@ function getScore(ind, pctChg, turnover){
     if (ind.j < 0) { kdj += 0.3; kdjAnalysis += ' J值为负，极度超卖。'; }
     else if (ind.j > 100) { kdj -= 0.3; kdjAnalysis += ' J值>100，极度超买。'; }
 
-    // 趋势修正
     if (ind.trendType === '上升趋势') {
-        if (k > 80) kdj = kdj / 2; // 防踏空
+        if (k > 80) kdj = kdj / 2;
         if (ind.kdjGold && k < 30) kdj += 0.2;
     } else if (ind.trendType === '下降趋势') {
-        if (k < 20) kdj = kdj / 2; // 防抄底
+        if (k < 20) kdj = kdj / 2;
         if (ind.kdjDead && k > 70) kdj -= 0.2;
     }
     scores['KDJ'] = Math.round(Math.max(-1.5, Math.min(1.5, kdj)) * 10) / 10;
@@ -495,7 +489,6 @@ function getScore(ind, pctChg, turnover){
     else if (rsi > 65) { rs -= 0.5; rsAnalysis += '偏强，但接近超买区域。'; }
     else { rsAnalysis += '处于正常区域(35-65)，多空力量相对均衡。'; }
 
-    // 趋势修正
     if (ind.trendType === '上升趋势' && rsi > 65) {
         rs = rs / 2;
     } else if (ind.trendType === '下降趋势' && rsi < 35) {
@@ -504,7 +497,7 @@ function getScore(ind, pctChg, turnover){
     scores['RSI'] = Math.round(Math.max(-1, Math.min(1, rs)) * 10) / 10;
     analyses['RSI'] = rsAnalysis;
 
-    // ========== 5. 布林带 ±1.5（趋势差异化） ==========
+    // ========== 5. 布林带 ±1.5 ==========
     var bl = 0, blAnalysis = '';
     if (close >= ind.bbm) { bl += 0.3; blAnalysis = '股价在中轨上方运行，偏强。'; }
     else { bl -= 0.3; blAnalysis = '股价在中轨下方运行，偏弱。'; }
@@ -531,7 +524,7 @@ function getScore(ind, pctChg, turnover){
     scores['布林'] = Math.round(Math.max(-1.5, Math.min(1.5, bl)) * 10) / 10;
     analyses['布林'] = blAnalysis;
 
-    // ========== 6. 换手率 ±1.0（市值差异化阈值） ==========
+    // ========== 6. 换手率 ±1.0 ==========
     var thresholds = {
         "大盘股": { low: 1, activeLow: 1, activeHigh: 2, highLow: 2, highHigh: 5, extreme: 5 },
         "中盘股": { low: 2, activeLow: 3, activeHigh: 7, highLow: 7, highHigh: 15, extreme: 15 },
@@ -562,16 +555,75 @@ function getScore(ind, pctChg, turnover){
     // ========== 7. 量比 ±1.0 ==========
     var vrs = 0, vrsAnalysis = '量比' + ind.vr.toFixed(2) + '，';
     var vrv = ind.vr || 1;
-    if (vrv >= 1.5 && vrv < 2.5) { vrs += pctChg > 0 ? 0.7 : -0.3; vrsAnalysis += '温和放量，交投有所活跃。'; }
-    else if (vrv >= 2.5 && vrv < 5) { vrs += pctChg > 0 ? 1 : 0.2; vrsAnalysis += '明显放量，资金介入明显。'; }
-    else if (vrv >= 5 && vrv < 10) { vrs -= 0.5; vrsAnalysis += '剧烈放量，成交是平时的' + vrv.toFixed(0) + '倍，异常活跃需警惕。'; }
+    if (vrv >= 1.5 && vrv < 2.5) { vrs += pctChg > 0 ? 0.7 : -0.3; vrsAnalysis += '当日温和放量，交投有所活跃。'; }
+    else if (vrv >= 2.5 && vrv < 5) { vrs += pctChg > 0 ? 1 : 0.2; vrsAnalysis += '当日明显放量，资金介入明显。'; }
+    else if (vrv >= 5 && vrv < 10) { vrs -= 0.5; vrsAnalysis += '当日剧烈放量，成交是平时的' + vrv.toFixed(0) + '倍，异常活跃需警惕。'; }
     else if (vrv >= 10) { vrs -= 1; vrsAnalysis += '量比极端异常！极度放量，大概率是转折信号。'; }
-    else if (vrv < 0.5) { vrs += 0.3; vrsAnalysis += '极度缩量，地量水平，可能是见底信号。'; }
+    else if (vrv < 0.5) { vrs += 0.3; vrsAnalysis += '当日极度缩量，地量水平，可能是见底信号。'; }
     else { vrsAnalysis += '量比正常，成交量与近期持平。'; }
     scores['量比'] = Math.round(Math.max(-1, Math.min(1, vrs)) * 10) / 10;
     analyses['量比'] = vrsAnalysis;
 
-    // ========== 8. 趋势 ±1.0 ==========
+    // ========== 8. 成交量 ±1.0（新增独立维度） ==========
+    var volScore = 0, volAnalysis = '';
+    // 8.1 中期量能趋势（0.4分）
+    if (ind.trendType === '上升趋势') {
+        if (ind.volTrend) {
+            volScore += 0.4;
+            volAnalysis = '上升趋势中量能持续放大，量价配合健康，上涨动能充足。';
+        } else {
+            volScore -= 0.2;
+            volAnalysis = '上升趋势中量能逐步萎缩，量价背离，上涨持续性存疑。';
+        }
+    } else if (ind.trendType === '下降趋势') {
+        if (!ind.volTrend) {
+            volScore += 0.2;
+            volAnalysis = '下降趋势中缩量下跌，抛压逐步减弱，有止跌迹象。';
+        } else {
+            volScore -= 0.4;
+            volAnalysis = '下降趋势中放量下跌，资金持续出逃，下跌动能较强。';
+        }
+    } else {
+        if (ind.volTrend) {
+            volScore += 0.2;
+            volAnalysis = '震荡趋势中量能放大，市场关注度提升，有望选择方向。';
+        } else {
+            volScore -= 0.2;
+            volAnalysis = '震荡趋势中量能萎缩，交投清淡，短期难有大行情。';
+        }
+    }
+
+    // 8.2 当日价量配合（0.4分）
+    var isUp = pctChg > 0;
+    var isVolUp = ind.vr >= 1;
+    if (isUp && isVolUp) {
+        volScore += 0.4;
+        volAnalysis += ' 当日价涨量增，健康上涨结构，持续性较好。';
+    } else if (isUp && !isVolUp) {
+        volScore -= 0.2;
+        volAnalysis += ' 当日价涨量缩，量价背离，上涨动能不足。';
+    } else if (!isUp && isVolUp) {
+        volScore -= 0.4;
+        volAnalysis += ' 当日价跌量增，放量下跌，空头动能较强。';
+    } else if (!isUp && !isVolUp) {
+        volScore += 0.2;
+        volAnalysis += ' 当日价跌量缩，缩量调整，抛压有限。';
+    }
+
+    // 8.3 极端量能信号（0.2分）
+    if (ind.priceLevel === '低位' && ind.vr < 0.5) {
+        volScore += 0.2;
+        volAnalysis += ' 低位地量，见底信号增强。';
+    }
+    if (ind.priceLevel === '高位' && ind.vr > 5) {
+        volScore -= 0.2;
+        volAnalysis += ' 高位天量，见顶风险提升。';
+    }
+
+    scores['成交量'] = Math.round(Math.max(-1, Math.min(1, volScore)) * 10) / 10;
+    analyses['成交量'] = volAnalysis;
+
+    // ========== 9. 趋势 ±1.0 ==========
     var te = 0, teAnalysis = '当前处于' + ind.trendType + '，';
     if (ind.trendType == '上升趋势') { te += 1; teAnalysis += '均线向上发散，宜持股待涨或逢低加仓。'; }
     else if (ind.trendType == '下降趋势') { te -= 1; teAnalysis += '均线向下发散，宜轻仓观望或逢高减仓。'; }
@@ -603,7 +655,6 @@ function renderResult(td, ind, result, dataWarning){
     var cc = td.changePct >= 0 ? 'up' : 'down';
     var sign = td.changePct >= 0 ? '+' : '';
 
-    // 数据不足警告
     if (dataWarning) {
         html += '<div class="warn-bar">⚠️ K线数据不足60条，长周期指标（MA60/MACD）参考性有限</div>';
     }
@@ -619,7 +670,14 @@ function renderResult(td, ind, result, dataWarning){
     html += '<div class="info-row"><span class="info-label">最低</span><span class="info-value" style="color:#51cf66">' + td.low.toFixed(2) + '</span></div>';
     html += '<div class="info-row"><span class="info-label">昨收</span><span class="info-value">' + td.prevClose.toFixed(2) + '</span></div>';
     html += '<div class="info-row"><span class="info-label">振幅</span><span class="info-value">' + ind.amplitude.toFixed(2) + '%</span></div>';
-    html += '<div class="info-row"><span class="info-label">换手率 / 量比</span><span class="info-value">' + td.turnover.toFixed(2) + '% / ' + td.volRatio.toFixed(2) + '</span></div>';
+    html += '<div class="info-row"><span class="info-label">当日成交量</span><span class="info-value">' + (ind.todayVol / 100000000).toFixed(2) + '亿股</span></div>';
+    html += '<div class="info-row"><span class="info-label">换手率</span><span class="info-value">' + td.turnover.toFixed(2) + '%</span></div>';
+    
+    var volStatus = ind.vr >= 1 ? '放量' : '缩量';
+    var volStatusColor = ind.vr >= 1 ? '#ff6b6b' : '#51cf66';
+    var trendStatus = ind.volTrend ? '放量' : '缩量';
+    html += '<div class="info-row"><span class="info-label">当日量比 / 状态</span><span class="info-value">' + ind.vr.toFixed(2) + ' / <span style="color:' + volStatusColor + '">' + volStatus + '</span></span></div>';
+    html += '<div class="info-row"><span class="info-label">中期量能趋势(5日/20日均量)</span><span class="info-value">' + trendStatus + '趋势</span></div>';
     html += '<div class="info-row"><span class="info-label">总市值 / 流通市值</span><span class="info-value">' + td.totalMv.toFixed(0) + '亿 / ' + td.flowMv.toFixed(0) + '亿</span></div>';
     html += '<div class="info-row"><span class="info-label">市盈率 / 市净率</span><span class="info-value">' + (td.pe>0 ? td.pe.toFixed(2) : '亏损') + ' / ' + (td.pb>0 ? td.pb.toFixed(2) : 'N/A') + '</span></div>';
     html += '</div></div>';
@@ -636,15 +694,15 @@ function renderResult(td, ind, result, dataWarning){
     var sCls = result.total > 0 ? 'bull' : (result.total < 0 ? 'bear' : 'neutral');
     var sColor = result.total > 0 ? '#51cf66' : (result.total < 0 ? '#ff6b6b' : '#8b949e');
     html += '<div class="section"><div class="section-title"><span class="icon">🎯</span>综合评分</div>';
-    var barPct = (result.total + 12) / 24 * 100;
+    var barPct = (result.total + 13) / 26 * 100;
     html += '<div class="score-bar"><div class="score-fill" style="width:' + Math.max(3, Math.min(97, barPct)) + '%;background:' + sColor + '">' + (result.total >= 0 ? '+' : '') + result.total + '</div></div>';
-    html += '<div class="signal-box ' + sCls + '"><div class="signal-text" style="color:' + sColor + '">' + result.signal + '</div><div class="signal-score" style="color:' + sColor + '">得分：' + (result.total >= 0 ? '+' : '') + result.total + ' / ±12</div></div>';
+    html += '<div class="signal-box ' + sCls + '"><div class="signal-text" style="color:' + sColor + '">' + result.signal + '</div><div class="signal-score" style="color:' + sColor + '">得分：' + (result.total >= 0 ? '+' : '') + result.total + ' / ±13</div></div>';
     html += '<div class="advice-box">💡 ' + result.advice + '</div>';
     html += '</div>';
 
     // 各指标分析
-    var indicatorNames = ['均线','MACD','KDJ','RSI','布林','换手率','量比','趋势'];
-    var icons = {'均线':'📈','MACD':'📊','KDJ':'🔍','RSI':'📉','布林':'🎯','换手率':'💱','量比':'📶','趋势':'🧭'};
+    var indicatorNames = ['均线','MACD','KDJ','RSI','布林','换手率','量比','成交量','趋势'];
+    var icons = {'均线':'📈','MACD':'📊','KDJ':'🔍','RSI':'📉','布林':'🎯','换手率':'💱','量比':'📶','成交量':'📊','趋势':'🧭'};
     
     html += '<div class="section"><div class="section-title"><span class="icon">📋</span>各维度详细分析</div>';
     for(var i = 0; i < indicatorNames.length; i++){
@@ -679,7 +737,7 @@ function renderResult(td, ind, result, dataWarning){
     html += '<div class="info-row"><span class="info-label">RSI 6 / 14 / 24</span><span class="info-value">' + ind.rsi6.toFixed(1) + ' / ' + ind.rsi14.toFixed(1) + ' / ' + ind.rsi24.toFixed(1) + '</span></div>';
     html += '<div class="info-row"><span class="info-label">布林 上/中/下轨</span><span class="info-value">' + ind.bbu.toFixed(2) + ' / ' + ind.bbm.toFixed(2) + ' / ' + ind.bbl.toFixed(2) + '</span></div>';
     html += '<div class="info-row"><span class="info-label">布林位置 / 带宽</span><span class="info-value">' + ind.bollPos.toFixed(0) + '% / ' + ind.bollWidth.toFixed(1) + '%</span></div>';
-    html += '<div class="info-row"><span class="info-label">量比 / 成交量趋势</span><span class="info-value">' + ind.vr.toFixed(2) + ' / ' + (ind.volTrend ? '放量' : '缩量') + '</span></div>';
+    html += '<div class="info-row"><span class="info-label">5日均量 / 20日均量</span><span class="info-value">' + (ind.volMa5 / 100000000).toFixed(2) + '亿 / ' + (ind.volMa20 / 100000000).toFixed(2) + '亿</span></div>';
     html += '<div class="info-row"><span class="info-label">K线数据条数</span><span class="info-value">' + ind.len + '条</span></div>';
     html += '</div>';
 
