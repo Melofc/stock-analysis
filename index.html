@@ -168,7 +168,7 @@ function calcKDJ(data) {
     };
 }
 
-// ==================== 数据获取 ====================
+// ==================== 数据获取（修复成交量单位：手→股，×100） ====================
 async function getTencentData(code){
     var p = code.startsWith('6') ? 'sh' : 'sz';
     try{
@@ -200,12 +200,15 @@ async function getTencentData(code){
                     changeAmt: parseFloat(parts[31]) || 0,
                     turnover: parseFloat(parts[38]) || 0,
                     volRatio: parseFloat(parts[49]) || 1,
+                    // 接口返回单位：亿元，直接使用
                     totalMv: parseFloat(parts[45]) || 100,
                     flowMv: parseFloat(parts[44]) || 100,
                     pe: parseFloat(parts[39]) || 0,
-                    pb: parseFloat(parts[41]) || 0,
-                    volume: parseFloat(parts[6]) || 0,
-                    amount: parseFloat(parts[37]) || 0,
+                    pb: parseFloat(parts[46]) || 0,
+                    // 修复：接口单位为手，×100转换为股
+                    volume: parseFloat(parts[6]) * 100 || 0,
+                    // 接口单位：万元，×10000转换为元
+                    amount: parseFloat(parts[37]) * 10000 || 0,
                     high52: parseFloat(parts[46]) || 0,
                     low52: parseFloat(parts[47]) || 0
                 };
@@ -229,8 +232,11 @@ async function getTencentKline(code, days){
                     c: parseFloat(k[2]) || 0,
                     h: parseFloat(k[3]) || 0,
                     l: parseFloat(k[4]) || 0,
-                    v: parseFloat(k[5]) || 0,
-                    o: parseFloat(k[1]) || 0
+                    // 修复：接口单位为手，×100转换为股
+                    v: parseFloat(k[5]) * 100 || 0,
+                    o: parseFloat(k[1]) || 0,
+                    // 成交额：接口单位为元
+                    amt: parseFloat(k[6]) || 0
                 };
             });
         }
@@ -313,7 +319,7 @@ function calcAll(data, realtime){
     var bollPos = (last.c - bbl) / (bbu - bbl) * 100;
     var bollWidth = (bbu - bbl) / bbm * 100;
 
-    // 成交量相关（核心新增）
+    // 成交量相关（单位已统一为股）
     var volMa5 = len >= 6 ? sma(volumes.slice(0, -1), 5) : volumes[0];
     var volMa20 = len >= 21 ? sma(volumes.slice(0, -1), 20) : volumes[0];
     var vr = volMa5 > 0 ? last.v / volMa5 : 1;
@@ -564,7 +570,7 @@ function getScore(ind, pctChg, turnover){
     scores['量比'] = Math.round(Math.max(-1, Math.min(1, vrs)) * 10) / 10;
     analyses['量比'] = vrsAnalysis;
 
-    // ========== 8. 成交量 ±1.0（新增独立维度） ==========
+    // ========== 8. 成交量 ±1.0 ==========
     var volScore = 0, volAnalysis = '';
     // 8.1 中期量能趋势（0.4分）
     if (ind.trendType === '上升趋势') {
