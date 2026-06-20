@@ -363,4 +363,75 @@ function renderResult(td,ind,result){
     html+='</div>';
 
     // 各指标分析
-    var indicatorNames=['均线
+    var indicatorNames=['均线','MACD','KDJ','RSI','布林','换手率','量比','趋势'];
+    var icons={'均线':'📈','MACD':'📊','KDJ':'🔍','RSI':'📉','布林':'🎯','换手率':'💱','量比':'📶','趋势':'🧭'};
+    
+    html+='<div class="section"><div class="section-title"><span class="icon">📋</span>各维度详细分析</div>';
+    for(var i=0;i<indicatorNames.length;i++){
+        var name=indicatorNames[i];
+        var score=result.scores[name]||0;
+        var analysis=result.analyses[name]||'';
+        var sc=score>0?'#51cf66':(score<0?'#ff6b6b':'#8b949e');
+        html+='<div class="indicator-card">';
+        html+='<div class="ind-header"><span class="ind-name">'+(icons[name]||'')+' '+name+'</span><span class="ind-score" style="color:'+sc+'">'+(score>=0?'+':'')+score.toFixed(1)+'</span></div>';
+        html+='<div class="ind-analysis">'+analysis+'</div>';
+        html+='</div>';
+    }
+    html+='</div>';
+
+    // 趋势与位置
+    html+='<div class="section"><div class="section-title"><span class="icon">🧭</span>趋势与位置</div>';
+    html+='<div class="info-row"><span class="info-label">趋势环境</span><span class="info-value">'+ind.trendType+' | '+ind.marketType+' | '+ind.priceLevel+'</span></div>';
+    html+='<div class="info-row"><span class="info-label">近5日涨跌</span><span class="info-value" style="color:'+(ind.pct5>=0?'#ff6b6b':'#51cf66')+'">'+(ind.pct5>=0?'+':'')+ind.pct5.toFixed(2)+'%</span></div>';
+    html+='<div class="info-row"><span class="info-label">近10日涨跌</span><span class="info-value" style="color:'+(ind.pct10>=0?'#ff6b6b':'#51cf66')+'">'+(ind.pct10>=0?'+':'')+ind.pct10.toFixed(2)+'%</span></div>';
+    html+='<div class="info-row"><span class="info-label">近20日涨跌</span><span class="info-value" style="color:'+(ind.pct20>=0?'#ff6b6b':'#51cf66')+'">'+(ind.pct20>=0?'+':'')+ind.pct20.toFixed(2)+'%</span></div>';
+    html+='<div class="info-row"><span class="info-label">近60日涨跌</span><span class="info-value" style="color:'+(ind.pct60>=0?'#ff6b6b':'#51cf66')+'">'+(ind.pct60>=0?'+':'')+ind.pct60.toFixed(2)+'%</span></div>';
+    html+='<div class="info-row"><span class="info-label">近10日涨/跌天数</span><span class="info-value">'+ind.riseDays+'涨 / '+ind.fallDays+'跌</span></div>';
+    html+='<div class="info-row"><span class="info-label">连续涨/跌</span><span class="info-value">'+ind.upDays+'天涨 / '+ind.downDays+'天跌</span></div>';
+    html+='</div>';
+
+    // 技术指标数值
+    html+='<div class="section"><div class="section-title"><span class="icon">📉</span>技术指标数值</div>';
+    html+='<div class="info-row"><span class="info-label">MA5 / MA10 / MA20</span><span class="info-value">'+ind.ma5.toFixed(2)+' / '+ind.ma10.toFixed(2)+' / '+ind.ma20.toFixed(2)+'</span></div>';
+    html+='<div class="info-row"><span class="info-label">MA60 / MA120 / MA250</span><span class="info-value">'+ind.ma60.toFixed(2)+' / '+ind.ma120.toFixed(2)+' / '+ind.ma250.toFixed(2)+'</span></div>';
+    html+='<div class="info-row"><span class="info-label">MACD DIF / DEA / 柱</span><span class="info-value">'+ind.dif.toFixed(4)+' / '+ind.dea.toFixed(4)+' / '+ind.macd.toFixed(4)+'</span></div>';
+    html+='<div class="info-row"><span class="info-label">KDJ K / D / J</span><span class="info-value">'+ind.k.toFixed(1)+' / '+ind.d.toFixed(1)+' / '+ind.j.toFixed(1)+'</span></div>';
+    html+='<div class="info-row"><span class="info-label">RSI 6 / 14 / 24</span><span class="info-value">'+ind.rsi6.toFixed(1)+' / '+ind.rsi14.toFixed(1)+' / '+ind.rsi24.toFixed(1)+'</span></div>';
+    html+='<div class="info-row"><span class="info-label">布林 上/中/下轨</span><span class="info-value">'+ind.bbu.toFixed(2)+' / '+ind.bbm.toFixed(2)+' / '+ind.bbl.toFixed(2)+'</span></div>';
+    html+='<div class="info-row"><span class="info-label">布林位置 / 带宽</span><span class="info-value">'+ind.bollPos.toFixed(0)+'% / '+ind.bollWidth.toFixed(1)+'%</span></div>';
+    html+='<div class="info-row"><span class="info-label">量比 / 成交量趋势</span><span class="info-value">'+ind.vr.toFixed(2)+' / '+(ind.volTrend?'放量':'缩量')+'</span></div>';
+    html+='<div class="info-row"><span class="info-label">K线数据条数</span><span class="info-value">'+ind.len+'条</span></div>';
+    html+='</div>';
+
+    return html;
+}
+
+// ==================== 主函数 ====================
+async function analyze(){
+    var code=document.getElementById('codeInput').value.trim();
+    if(!code||code.length!=6||!code.match(/^\d{6}$/)){
+        document.getElementById('result').innerHTML='<div class="section" style="color:#f85149;text-align:center;">请输入6位数字股票代码</div>';return;
+    }
+    var rd=document.getElementById('result');
+    rd.innerHTML='<div class="loading"><div class="spin"></div><div style="margin-top:12px;">正在获取数据并分析...</div></div>';
+
+    try{
+        var td=await getTencentData(code);
+        if(!td||td.price<=0){rd.innerHTML='<div class="section" style="color:#f85149;text-align:center;">❌ 无法获取实时数据，请检查代码</div>';return;}
+
+        var kl=await getTencentKline(code,300);
+        if(!kl||kl.length<20){rd.innerHTML='<div class="section" style="color:#f85149;text-align:center;">❌ K线数据不足(已获取'+(kl?kl.length:0)+'条，需≥20条)</div>';return;}
+
+        var ind=calcAll(kl,td);
+        if(!ind){rd.innerHTML='<div class="section" style="color:#f85149;text-align:center;">❌ 指标计算失败</div>';return;}
+
+        var result=getScore(ind,td.changePct,td.turnover);
+        rd.innerHTML=renderResult(td,ind,result);
+    }catch(e){
+        rd.innerHTML='<div class="section" style="color:#f85149;text-align:center;">❌ 分析出错: '+e.message+'</div>';
+        console.log(e);
+    }
+}
+</script>
+</body>
+</html>
