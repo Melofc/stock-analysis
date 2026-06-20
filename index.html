@@ -8,7 +8,7 @@
     <title>股票量化分析</title>
     <style>
         *{margin:0;padding:0;box-sizing:border-box}
-        body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#0d1117;color:#c9d1d9;padding:12px;max-width:600px;margin:0 auto}
+        body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#0d1117;color:#c9d1d9;padding:12px;max-width:600px;margin:0 auto;padding-bottom:30px}
         .header{text-align:center;padding:15px;background:#161b22;border-radius:12px;margin-bottom:12px}
         .header h1{font-size:20px;color:#58a6ff}
         .input-row{display:flex;gap:8px;margin-bottom:12px}
@@ -16,24 +16,32 @@
         .input-row select{padding:12px;background:#161b22;border:1px solid#30363d;border-radius:8px;color:#f0f6fc;font-size:14px}
         .btn{width:100%;padding:14px;background:#238636;border:none;color:#fff;font-size:16px;border-radius:8px;cursor:pointer;margin-bottom:15px}
         .btn:active{opacity:.8}
+        .card{background:#161b22;border-radius:10px;padding:14px;margin-bottom:10px;border:1px solid#21262d}
+        .card h3{color:#58a6ff;font-size:14px;margin-bottom:10px}
         .metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
         .metric{text-align:center;background:#0d1117;padding:10px;border-radius:8px}
         .metric .val{font-size:20px;font-weight:bold;color:#f0f6fc}
         .metric .label{font-size:10px;color:#8b949e}
         .score-bar{background:#21262d;border-radius:10px;height:24px;margin:10px 0;overflow:hidden}
-        .score-fill{height:100%;border-radius:10px;transition:width 0.5s}
+        .score-fill{height:100%;border-radius:10px}
         .signal{text-align:center;font-size:22px;font-weight:bold;padding:10px}
         .advice{background:#0d1117;padding:12px;border-radius:8px;margin:10px 0;font-size:14px}
         .scores-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
         .score-item{background:#0d1117;padding:8px;border-radius:6px;text-align:center}
         .score-item .sname{font-size:10px;color:#8b949e}
         .score-item .sval{font-size:14px;font-weight:bold}
-        .details{font-size:11px;color:#8b949e;line-height:1.8;margin-top:10px}
+        .details{font-size:11px;color:#8b949e;line-height:1.8}
+        .detail-row{display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid#21262d}
+        .detail-row .dl{color:#8b949e}
+        .detail-row .dv{color:#f0f6fc;font-weight:bold}
         .loading{text-align:center;padding:30px;color:#8b949e}
         .spin{display:inline-block;width:24px;height:24px;border:3px solid#21262d;border-top-color:#58a6ff;border-radius:50%;animation:s .8s linear infinite}
         @keyframes s{to{transform:rotate(360deg)}}
         .info{font-size:10px;color:#484f58;text-align:center;margin-top:15px}
-        .err{color:#f85149;text-align:center;padding:15px}
+        .tag{display:inline-block;padding:2px 8px;border-radius:4px;font-size:10px;margin:2px}
+        .tag-bull{background:rgba(81,207,102,0.15);color:#3fb950}
+        .tag-bear{background:rgba(255,107,107,0.15);color:#f85149}
+        .tag-info{background:rgba(88,166,255,0.15);color:#58a6ff}
     </style>
 </head>
 <body>
@@ -52,34 +60,29 @@
     </div>
     <button class="btn" onclick="analyze()">🔍 开始分析</button>
     <div id="result"></div>
-    <div class="info">数据来源：腾讯/东方财富 | 仅供参考</div>
+    <div class="info">数据来源：腾讯财经 | 仅供参考，不构成投资建议</div>
 
 <script>
-function selectPreset(){
-    document.getElementById('codeInput').value = document.getElementById('presetSelect').value;
-}
+function selectPreset(){document.getElementById('codeInput').value=document.getElementById('presetSelect').value;}
 
-// 腾讯实时数据
-async function getTencent(code){
-    var p = code.startsWith('6')?'sh':'sz';
-    try {
-        var resp = await fetch('https://qt.gtimg.cn/q='+p+code);
-        var text = await resp.text();
-        var m = text.match(/"([^"]*)"/);
+async function getTencentData(code){
+    var p=code.startsWith('6')?'sh':'sz';
+    try{
+        var resp=await fetch('https://qt.gtimg.cn/q='+p+code);
+        var text=await resp.text();
+        var m=text.match(/"([^"]*)"/);
         if(m){
-            var parts = m[1].split('~');
+            var parts=m[1].split('~');
             if(parts.length>49){
-                return {
-                    name: parts[1]||code,
-                    price: parseFloat(parts[3])||0,
-                    prevClose: parseFloat(parts[4])||0,
-                    open: parseFloat(parts[5])||0,
-                    high: parseFloat(parts[33])||0,
-                    low: parseFloat(parts[34])||0,
-                    changePct: parseFloat(parts[32])||0,
-                    turnover: parseFloat(parts[38])||0,
-                    volRatio: parseFloat(parts[49])||1,
-                    totalMv: parseFloat(parts[45])||100
+                return{
+                    name:parts[1]||code, price:parseFloat(parts[3])||0,
+                    prevClose:parseFloat(parts[4])||0, open:parseFloat(parts[5])||0,
+                    high:parseFloat(parts[33])||0, low:parseFloat(parts[34])||0,
+                    changePct:parseFloat(parts[32])||0, turnover:parseFloat(parts[38])||0,
+                    volRatio:parseFloat(parts[49])||1, totalMv:parseFloat(parts[45])||100,
+                    flowMv:parseFloat(parts[44])||100, pe:parseFloat(parts[39])||0,
+                    volume:parseFloat(parts[6])||0, amount:parseFloat(parts[37])||0,
+                    high52:parseFloat(parts[35])||0, low52:parseFloat(parts[36])||0
                 };
             }
         }
@@ -87,141 +90,240 @@ async function getTencent(code){
     return null;
 }
 
-// 东方财富K线
-async function getKline(code){
-    var mkt = code.startsWith('6')?1:0;
-    try {
-        var url = 'https://push2his.eastmoney.com/api/qt/stock/kline/get?secid='+mkt+'.'+code+'&klt=101&fqt=1&lmt=300&fields1=f1,f2,f3,f4,f5,f6&fields2=f51,f52,f53,f54,f55,f56,f57&ut=7eea3edcaed734be9fbf2444c1a1997e';
-        var resp = await fetch(url);
-        var data = await resp.json();
-        if(data && data.data && data.data.klines && data.data.klines.length>=20){
-            return data.data.klines.map(function(k){
-                var p = k.split(',');
-                return {c:parseFloat(p[2]), h:parseFloat(p[3]), l:parseFloat(p[4]), v:parseFloat(p[5])};
-            });
+async function getTencentKline(code,days){
+    var p=code.startsWith('6')?'sh':'sz';
+    try{
+        var url='https://web.ifzq.gtimg.cn/appstock/app/fqkline/get?param='+p+code+',day,,,'+days+',qfq';
+        var resp=await fetch(url);
+        var data=await resp.json();
+        var key=p+code;
+        var klines=null;
+        if(data&&data.data&&data.data[key]){
+            klines=data.data[key].qfqday||data.data[key].day;
+        }
+        if(klines&&klines.length>=20){
+            return klines.map(function(k){return{c:parseFloat(k[2]),h:parseFloat(k[3]),l:parseFloat(k[4]),v:parseFloat(k[5])};});
         }
     }catch(e){}
     return null;
 }
 
-function calcIndicators(data){
+function calcAll(data,realtime){
     if(!data||data.length<20)return null;
     var closes=data.map(function(d){return d.c;});
     var highs=data.map(function(d){return d.h;});
     var lows=data.map(function(d){return d.l;});
     var volumes=data.map(function(d){return d.v;});
-    var len=closes.length,last=closes[len-1];
+    var len=closes.length,last=closes[len-1],prev=closes[len-2];
 
     function sma(arr,n){var s=arr.slice(-n);var sum=0;for(var i=0;i<s.length;i++)sum+=s[i];return sum/s.length;}
     function ema(arr,n){if(arr.length<2)return arr[arr.length-1];var k=2/(n+1),r=arr[0];for(var i=1;i<arr.length;i++)r=arr[i]*k+r*(1-k);return r;}
 
+    // 均线
     var ma5=sma(closes,5),ma10=sma(closes,10),ma20=sma(closes,20),ma60=sma(closes,Math.min(60,len));
+    var ma120=sma(closes,Math.min(120,len)),ma250=sma(closes,Math.min(250,len));
+
+    // MACD
     var ema12=ema(closes,12),ema26=ema(closes,26),dif=ema12-ema26;
     var deaArr=[];
     for(var i=0;i<len;i++){var e12=ema(closes.slice(0,i+1),12),e26=ema(closes.slice(0,i+1),26);deaArr.push(e12-e26);}
     var deaVal=ema(deaArr,9),macd=2*(dif-deaVal);
 
+    // 前一日MACD用于判断金叉死叉
+    var prevEma12=ema(closes.slice(0,-1),12),prevEma26=ema(closes.slice(0,-1),26);
+    var prevDif=prevEma12-prevEma26;
+    var prevDeaArr=[];
+    for(var i=0;i<len-1;i++){var pe12=ema(closes.slice(0,i+1),12),pe26=ema(closes.slice(0,i+1),26);prevDeaArr.push(pe12-pe26);}
+    var prevDeaVal=ema(prevDeaArr,9);
+    var macdGold=(dif>deaVal&&prevDif<=prevDeaVal);
+    var macdDead=(dif<deaVal&&prevDif>=prevDeaVal);
+
+    // KDJ
     var ln=Math.min(9,len),lMin=Math.min.apply(null,lows.slice(-ln)),hMax=Math.max.apply(null,highs.slice(-ln));
     var rsv=hMax!=lMin?(last-lMin)/(hMax-lMin)*100:50;
-    var k=50;
-    for(var i=Math.max(0,len-27);i<len;i++){
-        var mn=Math.min.apply(null,lows.slice(Math.max(0,i-8),i+1));
-        var mx=Math.max.apply(null,highs.slice(Math.max(0,i-8),i+1));
-        var rs=mx!=mn?(data[i].c-mn)/(mx-mn)*100:50;k=k*2/3+rs*1/3;
-    }
+    var k=50;for(var i=Math.max(0,len-27);i<len;i++){var mn=Math.min.apply(null,lows.slice(Math.max(0,i-8),i+1));var mx=Math.max.apply(null,highs.slice(Math.max(0,i-8),i+1));var rs=mx!=mn?(data[i].c-mn)/(mx-mn)*100:50;k=k*2/3+rs*1/3;}
     var d=(k+50+50)/3,j=3*k-2*d;
 
-    var gains=0,losses=0,rn=Math.min(14,len-1);
-    for(var i=len-rn;i<len;i++){var df=data[i].c-data[i-1].c;if(df>0)gains+=df;else losses-=df;}
-    var rsVal=losses>0?(gains/rn)/(losses/rn):100,rsi=100-100/(1+rsVal);
+    // 前一日KDJ
+    var prevK=50;for(var i=Math.max(0,len-28);i<len-1;i++){var pmn=Math.min.apply(null,lows.slice(Math.max(0,i-8),i+1));var pmx=Math.max.apply(null,highs.slice(Math.max(0,i-8),i+1));var prs=pmx!=pmn?(data[i].c-pmn)/(pmx-pmn)*100:50;prevK=prevK*2/3+prs*1/3;}
+    var prevD=(prevK+50+50)/3;
+    var kdjGold=(k>d&&prevK<=prevD);
+    var kdjDead=(k<d&&prevK>=prevD);
 
+    // RSI(6)和RSI(14)
+    function calcRSI(n){
+        var g=0,l=0,rn=Math.min(n,len-1);
+        for(var i=len-rn;i<len;i++){var df=data[i].c-data[i-1].c;if(df>0)g+=df;else l-=df;}
+        var rs=l>0?(g/rn)/(l/rn):100;return 100-100/(1+rs);
+    }
+    var rsi6=calcRSI(6),rsi14=calcRSI(14),rsi24=calcRSI(24);
+
+    // 布林带
     var bn=Math.min(20,len),bs=closes.slice(-bn),bbm=0;
     for(var i=0;i<bs.length;i++)bbm+=bs[i];bbm/=bn;
     var variance=0;for(var i=0;i<bs.length;i++)variance+=Math.pow(bs[i]-bbm,2);
-    var std=Math.sqrt(variance/bn),bbu=bbm+2*std,bbl=bbm-2*std,bollPos=(last-bbl)/(bbu-bbl)*100;
+    var std=Math.sqrt(variance/bn),bbu=bbm+2*std,bbl=bbm-2*std;
+    var bollPos=(last-bbl)/(bbu-bbl)*100;
+    var bollWidth=(bbu-bbl)/bbm*100;
 
-    var vm=0,vs=volumes.slice(-5);for(var i=0;i<vs.length;i++)vm+=vs[i];vm/=5;
-    var vr=vm>0?volumes[len-1]/vm:1;
+    // 成交量分析
+    var volMa5=sma(volumes,5),volMa20=sma(volumes,20);
+    var vr=volMa5>0?volumes[len-1]/volMa5:1;
+    var volTrend=volMa5>volMa20;
 
-    return{ma5:ma5,ma10:ma10,ma20:ma20,ma60:ma60,dif:dif,dea:deaVal,macd:macd,k:k,d:d,j:j,rsi:rsi,bbu:bbu,bbl:bbl,bbm:bbm,bollPos:bollPos,vr:vr,last:last};
+    // 价格位置
+    var pct5=(last-closes[Math.max(0,len-6)])/closes[Math.max(0,len-6)]*100;
+    var pct10=(last-closes[Math.max(0,len-11)])/closes[Math.max(0,len-11)]*100;
+    var pct20=(last-closes[Math.max(0,len-21)])/closes[Math.max(0,len-21)]*100;
+    var pct60=(last-closes[Math.max(0,len-61)])/closes[Math.max(0,len-61)]*100;
+
+    // 趋势判断
+    var trendType='震荡趋势';
+    if(last>=ma60&&ma20>sma(closes.slice(-25,-5),20))trendType='上升趋势';
+    else if(last<ma60&&ma20<sma(closes.slice(-25,-5),20))trendType='下降趋势';
+
+    // 价格位置(高低位)
+    var priceLevel='中位';
+    if(pct20>=15)priceLevel='高位';
+    else if(pct20<=-15)priceLevel='低位';
+
+    // 盘口类型
+    var mv=realtime?realtime.totalMv:100;
+    var marketType='中盘股';
+    if(mv>=500)marketType='大盘股';
+    else if(mv<50)marketType='小盘股';
+
+    // 振幅
+    var amplitude=(data[len-1].h-data[len-1].l)/prev*100;
+
+    // 连续涨跌天数
+    var upDays=0,downDays=0;
+    for(var i=len-1;i>=0;i--){
+        if(data[i].c>data[i].c)break;
+        if(data[i].c>data[i-1].c)upDays++;else break;
+    }
+    for(var i=len-1;i>=0;i--){
+        if(data[i].c<data[i-1].c)downDays++;else break;
+    }
+
+    return{
+        ma5:ma5,ma10:ma10,ma20:ma20,ma60:ma60,ma120:ma120,ma250:ma250,
+        dif:dif,dea:deaVal,macd:macd,macdGold:macdGold,macdDead:macdDead,
+        k:k,d:d,j:j,kdjGold:kdjGold,kdjDead:kdjDead,
+        rsi6:rsi6,rsi14:rsi14,rsi24:rsi24,
+        bbu:bbu,bbl:bbl,bbm:bbm,bollPos:bollPos,bollWidth:bollWidth,
+        vr:vr,volMa5:volMa5,volMa20:volMa20,volTrend:volTrend,
+        pct5:pct5,pct10:pct10,pct20:pct20,pct60:pct60,
+        trendType:trendType,priceLevel:priceLevel,marketType:marketType,
+        amplitude:amplitude,upDays:upDays,downDays:downDays,
+        last:last,prev:prev,len:len
+    };
 }
 
-function getScore(ind,pctChg,turnover){
-    if(!ind)return{scores:{},total:0,signal:'数据不足',advice:''};
-    var scores={},k=ind.k,rsi=ind.rsi,close=ind.last;
+function getScore(ind,pctChg,turnover,mv){
+    if(!ind)return{scores:{},total:0,signal:'数据不足',advice:'',details:[]};
+    var scores={},details=[],k=ind.k,rsi=ind.rsi14,close=ind.last;
 
+    // 均线 ±2.5
     var ma=0;
     if(close>ind.ma5)ma+=0.3;else ma-=0.3;
     if(close>ind.ma20)ma+=0.4;else ma-=0.4;
-    if(ind.ma5>ind.ma10&&ind.ma10>ind.ma20)ma+=1.8;
-    else if(ind.ma5<ind.ma10&&ind.ma10<ind.ma20)ma-=1.8;
+    if(ind.ma5>ind.ma10&&ind.ma10>ind.ma20){ma+=1.8;details.push('均线多头排列');}
+    else if(ind.ma5<ind.ma10&&ind.ma10<ind.ma20){ma-=1.8;details.push('均线空头排列');}
+    if(close>ind.ma60)details.push('站上MA60');
+    else details.push('跌破MA60');
     scores['均线']=Math.max(-2.5,Math.min(2.5,ma));
 
+    // MACD ±2.0
     var mc=0;
-    if(ind.dif>ind.dea)mc+=1.5;else mc-=1.5;
+    if(ind.macdGold){mc+=2;details.push('MACD金叉✨');}
+    else if(ind.macdDead){mc-=2;details.push('MACD死叉💀');}
+    else if(ind.dif>ind.dea){mc+=1;details.push('MACD多头');}
+    else{mc-=1;details.push('MACD空头');}
     if(ind.dif>0)mc+=0.3;else mc-=0.3;
     scores['MACD']=Math.max(-2,Math.min(2,mc));
 
+    // KDJ ±1.5
     var kdj=0;
-    if(k<20)kdj+=0.5;else if(k>80)kdj-=0.5;
-    if(ind.j<0)kdj+=0.3;else if(ind.j>100)kdj-=0.3;
+    if(ind.kdjGold){kdj+=k<30?1.5:0.7;details.push(k<30?'KDJ低位金叉':'KDJ金叉');}
+    else if(ind.kdjDead){kdj-=k>70?1.5:0.7;details.push(k>70?'KDJ高位死叉':'KDJ死叉');}
+    if(k<20){kdj+=0.5;details.push('KDJ超卖区');}
+    else if(k>80){kdj-=0.5;details.push('KDJ超买区');}
     scores['KDJ']=Math.max(-1.5,Math.min(1.5,kdj));
 
+    // RSI ±1.0
     var rs=0;
-    if(rsi<25)rs+=1;else if(rsi<35)rs+=0.5;
-    else if(rsi>75)rs-=1;else if(rsi>65)rs-=0.5;
+    if(rsi<25){rs+=1;details.push('RSI超卖('+rsi.toFixed(1)+')');}
+    else if(rsi<35)rs+=0.5;
+    else if(rsi>75){rs-=1;details.push('RSI超买('+rsi.toFixed(1)+')');}
+    else if(rsi>65)rs-=0.5;
     scores['RSI']=Math.max(-1,Math.min(1,rs));
 
+    // 布林 ±1.5
     var bl=0;
     if(close>=ind.bbm)bl+=0.3;else bl-=0.3;
-    if(close<=ind.bbl)bl+=1.5;else if(close>=ind.bbu)bl-=1.5;
+    if(close<=ind.bbl){bl+=1.5;details.push('触及布林下轨(支撑)');}
+    else if(close>=ind.bbu){bl-=1.5;details.push('触及布林上轨(压力)');}
+    if(ind.bollWidth<5)details.push('布林带收窄⚠️即将变盘');
     scores['布林']=Math.max(-1.5,Math.min(1.5,bl));
 
+    // 换手率 ±1.0
     var tr=0,trv=turnover||0;
-    if(trv>=3&&trv<=7)tr+=pctChg>0?0.8:0.3;
-    else if(trv>15)tr-=1;else if(trv<1)tr-=0.3;
+    if(trv>=3&&trv<=7){tr+=pctChg>0?0.8:0.3;details.push('换手率活跃('+trv.toFixed(1)+'%)');}
+    else if(trv>15){tr-=1;details.push('换手率极高⚠️');}
+    else if(trv<1){tr-=0.3;details.push('换手率低迷');}
     scores['换手率']=Math.max(-1,Math.min(1,tr));
 
-    var vr=0,vrv=ind.vr||1;
-    if(vrv>=1.5&&vrv<2.5)vr+=pctChg>0?0.7:-0.3;
-    else if(vrv>=5)vr-=1;
-    scores['量比']=Math.max(-1,Math.min(1,vr));
+    // 量比 ±1.0
+    var vrs=0,vrv=ind.vr||1;
+    if(vrv>=1.5&&vrv<2.5){vrs+=pctChg>0?0.7:-0.3;details.push('量比温和放大');}
+    else if(vrv>=2.5&&vrv<5){vrs+=pctChg>0?1:0.2;details.push('量比明显放大');}
+    else if(vrv>=5)vrs-=1;
+    else if(vrv<0.5)vrs+=0.3;
+    scores['量比']=Math.max(-1,Math.min(1,vrs));
+
+    // 趋势环境 ±1.0
+    var te=0;
+    if(ind.trendType=='上升趋势'){te+=1;details.push('上升趋势📈');}
+    else if(ind.trendType=='下降趋势'){te-=1;details.push('下降趋势📉');}
+    scores['趋势']=Math.max(-1,Math.min(1,te));
 
     var total=0;for(var key in scores)total+=scores[key];total=Math.round(total*10)/10;
 
     var signal,advice;
-    if(total>=4){signal='✅✅ 强烈买入';advice='多项指标共振向上，可积极建仓。止损设MA20下方3%。';}
-    else if(total>=2){signal='✅ 买入信号';advice='技术面偏多，可适量建仓，关注量能持续性。';}
-    else if(total>=0.5){signal='🟢 偏多持有';advice='趋势偏多但不够强势，持仓持有。';}
-    else if(total>-0.5){signal='🔍 观望';advice='多空均衡方向不明，建议空仓等待。';}
-    else if(total>-2){signal='🟠 偏空谨慎';advice='趋势偏弱，重仓者减仓至3成以下。';}
-    else if(total>-4){signal='❌ 卖出信号';advice='技术面转弱，建议分批卖出止损。';}
-    else{signal='❌❌ 强烈卖出';advice='多项指标共振向下，果断清仓。';}
+    if(total>=4){signal='✅✅ 强烈买入';advice='多项指标共振向上，趋势确定性强。可分批建仓/加仓，止损设在MA20下方3%。';}
+    else if(total>=2){signal='✅ 买入信号';advice='技术面偏多，反弹/上涨动能充足。适量建仓，关注量能持续性。';}
+    else if(total>=0.5){signal='🟢 偏多持有';advice='趋势偏多但强度不足。持仓者继续持有；空仓者小仓位试探。';}
+    else if(total>-0.5){signal='🔍 观望';advice='多空均衡，方向不明。建议空仓等待突破，持仓者保持原有仓位。';}
+    else if(total>-2){signal='🟠 偏空谨慎';advice='趋势偏弱，动能不足。重仓者减仓至3成以下，轻仓者设好止损。';}
+    else if(total>-4){signal='❌ 卖出信号';advice='技术面转弱明确。分批卖出或止损离场，保住本金等待机会。';}
+    else{signal='❌❌ 强烈卖出';advice='多项指标共振向下，下跌风险极高。果断清仓，不抱有侥幸心理。';}
 
-    return{scores:scores,total:total,signal:signal,advice:advice};
+    return{scores:scores,total:total,signal:signal,advice:advice,details:details};
 }
 
 async function analyze(){
     var code=document.getElementById('codeInput').value.trim();
     if(!code||code.length!=6||!code.match(/^\d{6}$/)){
-        document.getElementById('result').innerHTML='<div class="err">请输入6位数字股票代码</div>';return;
+        document.getElementById('result').innerHTML='<div class="card" style="color:#f85149;text-align:center;">请输入6位数字股票代码</div>';return;
     }
     var rd=document.getElementById('result');
     rd.innerHTML='<div class="loading"><div class="spin"></div><div style="margin-top:10px;">分析中...</div></div>';
 
     try{
-        var td=await getTencent(code);
-        if(!td||td.price<=0){rd.innerHTML='<div class="err">❌ 无法获取实时数据</div>';return;}
+        var td=await getTencentData(code);
+        if(!td||td.price<=0){rd.innerHTML='<div class="card" style="color:#f85149;text-align:center;">❌ 无法获取实时数据</div>';return;}
 
-        var kl=await getKline(code);
-        if(!kl||kl.length<20){rd.innerHTML='<div class="err">❌ K线数据不足(已获取'+(kl?kl.length:0)+'条，需≥20条)</div>';return;}
+        var kl=await getTencentKline(code,300);
+        if(!kl||kl.length<20){rd.innerHTML='<div class="card" style="color:#f85149;text-align:center;">❌ K线不足(已获取'+(kl?kl.length:0)+'条，需≥20条)</div>';return;}
 
-        var ind=calcIndicators(kl);
-        if(!ind){rd.innerHTML='<div class="err">❌ 指标计算失败</div>';return;}
+        var ind=calcAll(kl,td);
+        if(!ind){rd.innerHTML='<div class="card" style="color:#f85149;text-align:center;">❌ 指标计算失败</div>';return;}
 
-        var result=getScore(ind,td.changePct,td.turnover);
+        var result=getScore(ind,td.changePct,td.turnover,td.totalMv);
 
         var html='';
+        // 头部指标
         html+='<div class="metrics">';
         html+='<div class="metric"><div class="val">¥'+td.price.toFixed(2)+'</div><div class="label">现价</div></div>';
         var cc=td.changePct>=0?'#ff6b6b':'#51cf66';
@@ -229,13 +331,27 @@ async function analyze(){
         html+='<div class="metric"><div class="val">'+td.totalMv.toFixed(0)+'亿</div><div class="label">总市值</div></div>';
         html+='</div>';
 
-        var pct=(result.total+10)/20*100;
+        // 评分条
+        var pct=(result.total+14)/28*100;
         var color=result.total>0?'#51cf66':(result.total<0?'#ff6b6b':'#8b949e');
         html+='<div class="score-bar"><div class="score-fill" style="width:'+pct+'%;background:'+color+'"></div></div>';
-        html+='<div class="signal" style="color:'+color+'">'+result.signal+' <small>('+(result.total>=0?'+':'')+result.total+')</small></div>';
+        html+='<div class="signal" style="color:'+color+'">'+result.signal+' <small>('+(result.total>=0?'+':'')+result.total+'/±14)</small></div>';
         html+='<div class="advice">💡 '+result.advice+'</div>';
-        html+='<div style="font-size:11px;color:#8b949e;margin-bottom:8px;">'+td.name+' | 换手率:'+td.turnover.toFixed(2)+'% | 量比:'+td.volRatio.toFixed(2)+' | K线:'+kl.length+'条</div>';
 
+        // 关键信号标签
+        if(result.details.length>0){
+            html+='<div style="margin-bottom:10px">';
+            for(var i=0;i<result.details.length;i++){
+                var d=result.details[i];
+                var cls='tag-info';
+                if(d.includes('多头')||d.includes('金叉')||d.includes('超卖')||d.includes('支撑')||d.includes('上升'))cls='tag-bull';
+                else if(d.includes('空头')||d.includes('死叉')||d.includes('超买')||d.includes('压力')||d.includes('下降'))cls='tag-bear';
+                html+='<span class="tag '+cls+'">'+d+'</span>';
+            }
+            html+='</div>';
+        }
+
+        // 分项得分
         html+='<div class="scores-grid">';
         for(var name in result.scores){
             var val=result.scores[name];
@@ -244,18 +360,37 @@ async function analyze(){
         }
         html+='</div>';
 
-        html+='<div class="details">';
-        html+='📊 今开:'+td.open.toFixed(2)+' 最高:'+td.high.toFixed(2)+' 最低:'+td.low.toFixed(2)+'<br>';
-        html+='📊 MA5:'+ind.ma5.toFixed(2)+' MA10:'+ind.ma10.toFixed(2)+' MA20:'+ind.ma20.toFixed(2)+' MA60:'+ind.ma60.toFixed(2)+'<br>';
-        html+='📊 MACD: DIF='+ind.dif.toFixed(4)+' DEA='+ind.dea.toFixed(4)+'<br>';
-        html+='📊 KDJ: K='+ind.k.toFixed(1)+' D='+ind.d.toFixed(1)+' J='+ind.j.toFixed(1)+'<br>';
-        html+='📊 RSI(6): '+ind.rsi.toFixed(1)+'<br>';
-        html+='📊 布林: 上轨='+ind.bbu.toFixed(2)+' 中轨='+ind.bbm.toFixed(2)+' 下轨='+ind.bbl.toFixed(2)+'<br>';
-        html+='📊 布林位置: '+ind.bollPos.toFixed(0)+'% (0%=下轨,100%=上轨)';
+        // 详细数据
+        html+='<div class="card" style="margin-top:10px"><h3>📊 实时行情</h3>';
+        html+='<div class="detail-row"><span class="dl">名称</span><span class="dv">'+td.name+'</span></div>';
+        html+='<div class="detail-row"><span class="dl">今开/最高/最低</span><span class="dv">'+td.open.toFixed(2)+' / '+td.high.toFixed(2)+' / '+td.low.toFixed(2)+'</span></div>';
+        html+='<div class="detail-row"><span class="dl">昨收</span><span class="dv">'+td.prevClose.toFixed(2)+'</span></div>';
+        html+='<div class="detail-row"><span class="dl">振幅</span><span class="dv">'+ind.amplitude.toFixed(2)+'%</span></div>';
+        html+='<div class="detail-row"><span class="dl">换手率/量比</span><span class="dv">'+td.turnover.toFixed(2)+'% / '+td.volRatio.toFixed(2)+'</span></div>';
+        html+='<div class="detail-row"><span class="dl">总市值/流通市值</span><span class="dv">'+td.totalMv.toFixed(0)+'亿 / '+td.flowMv.toFixed(0)+'亿</span></div>';
+        html+='<div class="detail-row"><span class="dl">市盈率</span><span class="dv">'+(td.pe>0?td.pe.toFixed(2):'亏损')+'</span></div>';
+        html+='</div>';
+
+        html+='<div class="card"><h3>📈 趋势与位置</h3>';
+        html+='<div class="detail-row"><span class="dl">趋势环境</span><span class="dv">'+ind.trendType+' | '+ind.marketType+' | '+ind.priceLevel+'</span></div>';
+        html+='<div class="detail-row"><span class="dl">近5日/10日/20日/60日</span><span class="dv" style="color:'+(ind.pct5>=0?'#ff6b6b':'#51cf66')+'">'+(ind.pct5>=0?'+':'')+ind.pct5.toFixed(2)+'% / '+(ind.pct10>=0?'+':'')+ind.pct10.toFixed(2)+'% / '+(ind.pct20>=0?'+':'')+ind.pct20.toFixed(2)+'% / '+(ind.pct60>=0?'+':'')+ind.pct60.toFixed(2)+'%</span></div>';
+        html+='<div class="detail-row"><span class="dl">连续涨/跌</span><span class="dv">'+ind.upDays+'天涨 / '+ind.downDays+'天跌</span></div>';
+        html+='<div class="detail-row"><span class="dl">52周最高/最低</span><span class="dv">'+td.high52.toFixed(2)+' / '+td.low52.toFixed(2)+'</span></div>';
+        html+='</div>';
+
+        html+='<div class="card"><h3>📉 技术指标</h3>';
+        html+='<div class="detail-row"><span class="dl">MA5/MA10/MA20</span><span class="dv">'+ind.ma5.toFixed(2)+' / '+ind.ma10.toFixed(2)+' / '+ind.ma20.toFixed(2)+'</span></div>';
+        html+='<div class="detail-row"><span class="dl">MA60/MA120/MA250</span><span class="dv">'+ind.ma60.toFixed(2)+' / '+ind.ma120.toFixed(2)+' / '+ind.ma250.toFixed(2)+'</span></div>';
+        html+='<div class="detail-row"><span class="dl">MACD(DIF/DEA/柱)</span><span class="dv">'+ind.dif.toFixed(4)+' / '+ind.dea.toFixed(4)+' / '+ind.macd.toFixed(4)+'</span></div>';
+        html+='<div class="detail-row"><span class="dl">KDJ(K/D/J)</span><span class="dv">'+ind.k.toFixed(1)+' / '+ind.d.toFixed(1)+' / '+ind.j.toFixed(1)+'</span></div>';
+        html+='<div class="detail-row"><span class="dl">RSI(6/14/24)</span><span class="dv">'+ind.rsi6.toFixed(1)+' / '+ind.rsi14.toFixed(1)+' / '+ind.rsi24.toFixed(1)+'</span></div>';
+        html+='<div class="detail-row"><span class="dl">布林带(上/中/下)</span><span class="dv">'+ind.bbu.toFixed(2)+' / '+ind.bbm.toFixed(2)+' / '+ind.bbl.toFixed(2)+'</span></div>';
+        html+='<div class="detail-row"><span class="dl">布林位置/带宽</span><span class="dv">'+ind.bollPos.toFixed(0)+'% / '+ind.bollWidth.toFixed(1)+'%</span></div>';
+        html+='<div class="detail-row"><span class="dl">量比(5日/20日)</span><span class="dv">'+ind.vr.toFixed(2)+' / '+(ind.volTrend?'放量':'缩量')+'</span></div>';
         html+='</div>';
 
         rd.innerHTML=html;
-    }catch(e){rd.innerHTML='<div class="err">❌ 分析出错: '+e.message+'</div>';}
+    }catch(e){rd.innerHTML='<div class="card" style="color:#f85149;text-align:center;">❌ 出错: '+e.message+'</div>';}
 }
 </script>
 </body>
